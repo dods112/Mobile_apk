@@ -4,13 +4,18 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 
-from database import get_connection, init_db
+from database import get_connection
 from freshness import freshness_state
 from intent import detect_intent
 from schedule import open_now
+from nearby import find_nearby, TANDAG_CENTER
+from seed_data import reset_and_seed
 
 
 PH_TZ = timezone(timedelta(hours=8))
+
+# Words that ask for the nearest center
+NEARBY_WORDS = ("pinakaduol", "duol", "nearest", "nearby", "asa naa", "asa pa", "asa ang")
 
 
 def to_ph_time(utc_str: str) -> str:
@@ -27,59 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-def ensure_seeded():
-    init_db()
-    conn = get_connection()
-    count = conn.execute("SELECT COUNT(*) FROM health_centers").fetchone()[0]
-    conn.close()
-    if count > 0:
-        return
-
-    conn = get_connection()
-    conn.executemany(
-        "INSERT INTO health_centers (name, barangay, contact_number, address, latitude, longitude) VALUES (?,?,?,?,?,?)",
-        [
-            ("Barangay X RHU", "Barangay X", "0900-000-0001", "Purok 1, Barangay X", 8.5000, 125.9700),
-            ("Barangay Y RHU", "Barangay Y", "0900-000-0002", "Purok 2, Barangay Y", 8.5100, 125.9750),
-            ("Barangay Z RHU", "Barangay Z", "0900-000-0003", "Purok 3, Barangay Z", 8.5200, 125.9800),
-        ],
-    )
-    conn.executemany(
-        "INSERT INTO items (health_center_id, name, category) VALUES (?,?,?)",
-        [
-            (1, "Amoxicillin 250mg", "medicine"),
-            (1, "Paracetamol", "medicine"),
-            (1, "ORS", "medicine"),
-            (1, "BCG Vaccine", "vaccine"),
-        ],
-    )
-    conn.executemany(
-        "INSERT INTO item_aliases (item_id, alias) VALUES (?,?)",
-        [(1, "amox"), (1, "amoxicillin"), (2, "para"), (2, "paracetamol"), (4, "bcg")],
-    )
-    conn.executemany(
-        "INSERT INTO stock_status (item_id, status, updated_by) VALUES (?,?,?)",
-        [(1, "out_of_stock", "Staff A"), (2, "in_stock", "Staff A"), (3, "low_stock", "Staff B"), (4, "in_stock", "Staff B")],
-    )
-    conn.executemany(
-        """INSERT INTO clinic_schedule
-           (health_center_id, service_name, day_of_week, specific_date, start_time, end_time, is_cancelled)
-           VALUES (?,?,?,?,?,?,?)""",
-        [
-            (1, "General Consultation", 0, None, "08:00", "12:00", 0),
-            (1, "General Consultation", 1, None, "08:00", "12:00", 0),
-            (1, "General Consultation", 2, None, "08:00", "12:00", 0),
-            (1, "General Consultation", 3, None, "08:00", "12:00", 0),
-            (1, "General Consultation", 4, None, "08:00", "12:00", 0),
-            (1, "Immunization", 2, None, "13:00", "16:00", 0),
-        ],
-    )
-    conn.commit()
-    conn.close()
-
-
-ensure_seeded()
+reset_and_seed()
 
 STATUS_LABELS = {
     "in_stock": "Available",
@@ -105,7 +58,6 @@ def root():
 def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
     conn = get_connection()
 
-    # 1. Resolve the alias (or item name) to an item in this center
     row = conn.execute(
         """
         SELECT i.id, i.name
@@ -123,7 +75,6 @@ def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
         conn.close()
         raise HTTPException(status_code=404, detail="Item not found at this center")
 
-    # 2. Get the latest status record
     status = conn.execute(
         """
         SELECT status, reason, expected_restock_date, updated_by,
@@ -136,13 +87,11 @@ def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
         (row["id"],),
     ).fetchone()
 
-    # 3. Fetch the center's freshness thresholds
     config = conn.execute(
         "SELECT fresh_max_hours, aging_max_hours FROM freshness_config WHERE id = 1"
     ).fetchone()
     conn.close()
 
-    # 4. Honest fallback: no record is NOT the same as out of stock
     if status is None:
         return {
             "item": row["name"],
@@ -174,12 +123,30 @@ def check_open_now(center: int = Query(...)):
     return open_now(center)
 
 
+@app.get("/api/nearby")
+def nearby(
+    item: Optional[str] = Query(None),
+    lat: float = Query(TANDAG_CENTER[0]),
+    lng: float = Query(TANDAG_CENTER[1]),
+):
+    return find_nearby(item, lat, lng)
+
+
 @app.get("/api/chat")
 def chat(message: str = Query(..., min_length=2), center: int = Query(1)):
+    lowered = message.lower()
+    wants_nearby = any(word in lowered for word in NEARBY_WORDS)
+
     result = detect_intent(message, center)
 
     if result["intent"] == "open_now":
         return open_now(center)
+
+    if wants_nearby and result["intent"] == "stock":
+        return find_nearby(result["item"], *TANDAG_CENTER)
+
+    if wants_nearby:
+        return find_nearby(None, *TANDAG_CENTER)
 
     if result["intent"] == "stock":
         return check_stock(item=result["item"], center=center)
