@@ -27,7 +27,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-init_db()
+
+def ensure_seeded():
+    init_db()
+    conn = get_connection()
+    count = conn.execute("SELECT COUNT(*) FROM health_centers").fetchone()[0]
+    conn.close()
+    if count > 0:
+        return
+
+    conn = get_connection()
+    conn.executemany(
+        "INSERT INTO health_centers (name, barangay, contact_number, address, latitude, longitude) VALUES (?,?,?,?,?,?)",
+        [
+            ("Barangay X RHU", "Barangay X", "0900-000-0001", "Purok 1, Barangay X", 8.5000, 125.9700),
+            ("Barangay Y RHU", "Barangay Y", "0900-000-0002", "Purok 2, Barangay Y", 8.5100, 125.9750),
+            ("Barangay Z RHU", "Barangay Z", "0900-000-0003", "Purok 3, Barangay Z", 8.5200, 125.9800),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO items (health_center_id, name, category) VALUES (?,?,?)",
+        [
+            (1, "Amoxicillin 250mg", "medicine"),
+            (1, "Paracetamol", "medicine"),
+            (1, "ORS", "medicine"),
+            (1, "BCG Vaccine", "vaccine"),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO item_aliases (item_id, alias) VALUES (?,?)",
+        [(1, "amox"), (1, "amoxicillin"), (2, "para"), (2, "paracetamol"), (4, "bcg")],
+    )
+    conn.executemany(
+        "INSERT INTO stock_status (item_id, status, updated_by) VALUES (?,?,?)",
+        [(1, "out_of_stock", "Staff A"), (2, "in_stock", "Staff A"), (3, "low_stock", "Staff B"), (4, "in_stock", "Staff B")],
+    )
+    conn.executemany(
+        """INSERT INTO clinic_schedule
+           (health_center_id, service_name, day_of_week, specific_date, start_time, end_time, is_cancelled)
+           VALUES (?,?,?,?,?,?,?)""",
+        [
+            (1, "General Consultation", 0, None, "08:00", "12:00", 0),
+            (1, "General Consultation", 1, None, "08:00", "12:00", 0),
+            (1, "General Consultation", 2, None, "08:00", "12:00", 0),
+            (1, "General Consultation", 3, None, "08:00", "12:00", 0),
+            (1, "General Consultation", 4, None, "08:00", "12:00", 0),
+            (1, "Immunization", 2, None, "13:00", "16:00", 0),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+
+ensure_seeded()
 
 STATUS_LABELS = {
     "in_stock": "Available",
@@ -187,6 +239,7 @@ def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
     conn.close()
     return {"ok": True}
 
+
 @app.get("/api/items")
 def list_items(center: int = Query(...)):
     conn = get_connection()
@@ -220,6 +273,7 @@ def list_items(center: int = Query(...)):
         }
         for r in rows
     ]
+
 
 @app.get("/api/staff/attention")
 def needs_attention(center: int = Query(...)):
