@@ -1,0 +1,11 @@
+﻿venv/
+**/venv/
+**/node_modules/
+**/build/
+**/.gradle/
+**/.idea/
+**/__pycache__/
+*.pyc
+backend/tanaw.db
+**/local.properties
+*.apk
