@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Query
+import os
+from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -13,13 +14,20 @@ from seed_data import reset_and_seed
 
 
 PH_TZ = timezone(timedelta(hours=8))
-
 NEARBY_WORDS = ("pinakaduol", "duol", "nearest", "nearby", "asa naa", "asa pa", "asa ang")
 
 
 def to_ph_time(utc_str: str) -> str:
     dt = datetime.fromisoformat(utc_str).replace(tzinfo=timezone.utc)
     return dt.astimezone(PH_TZ).strftime("%b %d, %Y %I:%M %p")
+
+
+def verify_staff_pin(x_staff_pin: str = Header(None)):
+    expected_pin = os.getenv("STAFF_PIN")
+    if not expected_pin:
+        return  # No PIN set (local dev)
+    if x_staff_pin != expected_pin:
+        raise HTTPException(status_code=401, detail="Invalid or missing Staff PIN")
 
 
 app = FastAPI(title="Tan-aw AI")
@@ -166,7 +174,7 @@ def chat(
     }
 
 
-@app.post("/api/staff/update")
+@app.post("/api/staff/update", dependencies=[Depends(verify_staff_pin)])
 def update_stock(data: StockUpdate):
     if data.status not in STATUS_LABELS:
         raise HTTPException(status_code=400, detail="Invalid status")
@@ -195,7 +203,7 @@ def update_stock(data: StockUpdate):
     return {"ok": True, "item": item["name"], "status": STATUS_LABELS[data.status]}
 
 
-@app.post("/api/staff/confirm")
+@app.post("/api/staff/confirm", dependencies=[Depends(verify_staff_pin)])
 def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
     conn = get_connection()
     conn.execute(
@@ -251,7 +259,7 @@ def list_items(center: int = Query(...)):
     ]
 
 
-@app.get("/api/staff/attention")
+@app.get("/api/staff/attention", dependencies=[Depends(verify_staff_pin)])
 def needs_attention(center: int = Query(...)):
     conn = get_connection()
     rows = conn.execute(
