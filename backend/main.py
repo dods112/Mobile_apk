@@ -282,3 +282,10 @@ def needs_attention(center: int = Query(...)):
             })
 
     return {"count": len(flagged), "items": flagged}
+
+@app.get("/api/_debug")
+def debug():
+    conn = get_connection()
+    centers = conn.execute("SELECT id, name FROM health_centers").fetchall()
+    conn.close()
+    return {"centers": [dict(r) for r in centers], "count": len(centers)}

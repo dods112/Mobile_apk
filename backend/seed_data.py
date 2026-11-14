@@ -1,8 +1,5 @@
 from database import get_connection, init_db
 
-# Verified: Tandag City Health Office and Birthing Clinic
-# Phone and address from the public listing. Confirm by calling before launch.
-# TODO: replace the coordinates with the exact pin from Google Maps.
 CENTERS = [
     (
         "Tandag City Health Office and Birthing Clinic",
@@ -15,34 +12,30 @@ CENTERS = [
 ]
 
 ITEMS = [
-    # (name, category, aliases)
     ("Amoxicillin 250mg", "medicine", ["amox", "amoxicillin"]),
     ("Paracetamol", "medicine", ["para", "paracetamol"]),
     ("ORS", "medicine", ["ors"]),
     ("BCG Vaccine", "vaccine", ["bcg"]),
 ]
 
-# Starting stock per center, in the same order as ITEMS
 STOCK_PLAN = {
     0: ["out_of_stock", "in_stock", "low_stock", "in_stock"],
 }
-
-SEED_MARKER = CENTERS[0][0]
 
 
 def reset_and_seed():
     init_db()
     conn = get_connection()
 
-    # Already seeded with the current verified data: keep staff changes
-    existing = conn.execute(
-        "SELECT COUNT(*) FROM health_centers WHERE name = ?", (SEED_MARKER,)
+    total = conn.execute("SELECT COUNT(*) FROM health_centers").fetchone()[0]
+    placeholders = conn.execute(
+        "SELECT COUNT(*) FROM health_centers WHERE LOWER(name) LIKE '%placeholder%'"
     ).fetchone()[0]
-    if existing > 0:
+
+    if total > 0 and placeholders == 0:
         conn.close()
         return
 
-    # Clear old data (children first)
     for table in [
         "update_log", "resident_reports", "subscriptions", "stock_status",
         "item_aliases", "clinic_schedule", "items", "health_centers",
@@ -76,7 +69,6 @@ def reset_and_seed():
                 (item_id, STOCK_PLAN[idx][item_pos], "Staff A"),
             )
 
-        # Weekday consultation hours: replace with the office's real schedule
         for day in range(5):
             conn.execute(
                 """INSERT INTO clinic_schedule
