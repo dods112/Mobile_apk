@@ -1,11 +1,17 @@
 from database import get_connection, init_db
 
-# PLACEHOLDER DATA: replace with verified RHU names, addresses, phone numbers,
-# and coordinates before real use.
+# Verified: Tandag City Health Office and Birthing Clinic
+# Phone and address from the public listing. Confirm by calling before launch.
+# TODO: replace the coordinates with the exact pin from Google Maps.
 CENTERS = [
-    ("Tandag RHU 1 (placeholder)", "Poblacion (placeholder)", "0900-000-1001", "Address to be verified", 9.0785, 126.1980),
-    ("Tandag RHU 2 (placeholder)", "Barangay 2 (placeholder)", "0900-000-1002", "Address to be verified", 9.0650, 126.2050),
-    ("Tandag RHU 3 (placeholder)", "Barangay 3 (placeholder)", "0900-000-1003", "Address to be verified", 9.0920, 126.1900),
+    (
+        "Tandag City Health Office and Birthing Clinic",
+        "Dagocdoc",
+        "086-214-3349",
+        "290 Delicona Street, Barangay Dagocdoc, Tandag City, Surigao del Sur",
+        9.0785,
+        126.1980,
+    ),
 ]
 
 ITEMS = [
@@ -19,24 +25,24 @@ ITEMS = [
 # Starting stock per center, in the same order as ITEMS
 STOCK_PLAN = {
     0: ["out_of_stock", "in_stock", "low_stock", "in_stock"],
-    1: ["in_stock", "in_stock", "in_stock", "out_of_stock"],
-    2: ["low_stock", "in_stock", "out_of_stock", "in_stock"],
 }
+
+SEED_MARKER = CENTERS[0][0]
 
 
 def reset_and_seed():
     init_db()
     conn = get_connection()
 
-    # Already seeded with the Tandag centers: keep whatever staff has changed
+    # Already seeded with the current verified data: keep staff changes
     existing = conn.execute(
-        "SELECT COUNT(*) FROM health_centers WHERE barangay LIKE '%(placeholder)%'"
+        "SELECT COUNT(*) FROM health_centers WHERE name = ?", (SEED_MARKER,)
     ).fetchone()[0]
     if existing > 0:
         conn.close()
         return
 
-    # Clear the old test data (children first)
+    # Clear old data (children first)
     for table in [
         "update_log", "resident_reports", "subscriptions", "stock_status",
         "item_aliases", "clinic_schedule", "items", "health_centers",
@@ -70,19 +76,14 @@ def reset_and_seed():
                 (item_id, STOCK_PLAN[idx][item_pos], "Staff A"),
             )
 
-        for day in range(5):  # Monday to Friday
+        # Weekday consultation hours: replace with the office's real schedule
+        for day in range(5):
             conn.execute(
                 """INSERT INTO clinic_schedule
                    (health_center_id, service_name, day_of_week, start_time, end_time, is_cancelled)
                    VALUES (?,?,?,?,?,0)""",
                 (center_id, "General Consultation", day, "08:00", "12:00"),
             )
-        conn.execute(
-            """INSERT INTO clinic_schedule
-               (health_center_id, service_name, day_of_week, start_time, end_time, is_cancelled)
-               VALUES (?,?,?,?,?,0)""",
-            (center_id, "Immunization", 2, "13:00", "16:00"),
-        )
 
     conn.commit()
     conn.close()
