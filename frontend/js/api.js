@@ -1,4 +1,4 @@
-const API_BASE = "http://192.168.254.206:8000";
+const API_BASE = "https://tan-aw-api.onrender.com";
 
 
 async function sendMessage(message, center = 1) {

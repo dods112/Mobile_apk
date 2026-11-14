@@ -1,12 +1,5 @@
 {
   "appId": "com.tanawai.app",
   "appName": "Tan-aw AI",
-  "webDir": "../frontend",
-  "server": {
-    "cleartext": true,
-    "androidScheme": "http"
-  },
-  "android": {
-    "allowMixedContent": true
-  }
+  "webDir": "../frontend"
 }
