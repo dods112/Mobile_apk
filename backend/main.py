@@ -14,7 +14,6 @@ from seed_data import reset_and_seed
 
 PH_TZ = timezone(timedelta(hours=8))
 
-# Words that ask for the nearest center
 NEARBY_WORDS = ("pinakaduol", "duol", "nearest", "nearby", "asa naa", "asa pa", "asa ang")
 
 
@@ -43,7 +42,7 @@ STATUS_LABELS = {
 
 class StockUpdate(BaseModel):
     item_id: int
-    status: str  # in_stock / low_stock / out_of_stock
+    status: str
     updated_by: str
     reason: Optional[str] = None
     expected_restock_date: Optional[str] = None
@@ -126,27 +125,37 @@ def check_open_now(center: int = Query(...)):
 @app.get("/api/nearby")
 def nearby(
     item: Optional[str] = Query(None),
-    lat: float = Query(TANDAG_CENTER[0]),
-    lng: float = Query(TANDAG_CENTER[1]),
+    lat: Optional[float] = Query(None),
+    lng: Optional[float] = Query(None),
 ):
-    return find_nearby(item, lat, lng)
+    user_lat = lat if lat is not None else TANDAG_CENTER[0]
+    user_lng = lng if lng is not None else TANDAG_CENTER[1]
+    return find_nearby(item, user_lat, user_lng)
 
 
 @app.get("/api/chat")
-def chat(message: str = Query(..., min_length=2), center: int = Query(1)):
+def chat(
+    message: str = Query(..., min_length=2),
+    center: int = Query(1),
+    lat: Optional[float] = Query(None),
+    lng: Optional[float] = Query(None),
+):
     lowered = message.lower()
     wants_nearby = any(word in lowered for word in NEARBY_WORDS)
 
     result = detect_intent(message, center)
 
+    user_lat = lat if lat is not None else TANDAG_CENTER[0]
+    user_lng = lng if lng is not None else TANDAG_CENTER[1]
+
     if result["intent"] == "open_now":
         return open_now(center)
 
     if wants_nearby and result["intent"] == "stock":
-        return find_nearby(result["item"], *TANDAG_CENTER)
+        return find_nearby(result["item"], user_lat, user_lng)
 
     if wants_nearby:
-        return find_nearby(None, *TANDAG_CENTER)
+        return find_nearby(None, user_lat, user_lng)
 
     if result["intent"] == "stock":
         return check_stock(item=result["item"], center=center)
