@@ -159,8 +159,29 @@ async function send(text) {
   const bubble = row.querySelector(".bubble");
 
   try {
-    const data = await sendMessage(clean);
-    bubble.innerHTML = formatReply(data);
+    // Detect if user is asking for nearby centers
+    const nearbyKeywords = ["duol", "asa", "center", "pinakaduol", "nearest", "find"];
+    const isNearby = nearbyKeywords.some(kw => clean.toLowerCase().includes(kw));
+    
+    let lat = null, lng = null;
+    
+    if (isNearby) {
+      const pos = await getUserLocation();
+      if (pos) {
+        lat = pos.lat;
+        lng = pos.lng;
+      }
+    }
+
+    const data = await sendMessage(clean, 1, lat, lng);
+    let html = formatReply(data);
+
+    // Add GPS fallback notice
+    if (isNearby && (!lat || !lng)) {
+      html += `<div class="notice" style="font-size: 0.8em; margin-top: 8px; color: #666;">📍 Wala nakuha ang imong GPS. Gibase sa Tandag City.</div>`;
+    }
+
+    bubble.innerHTML = html;
     setOnline(true);
   } catch (err) {
     bubble.innerHTML = esc("Dili makakonek sa server. Susiha nga nagdagan ang backend.");

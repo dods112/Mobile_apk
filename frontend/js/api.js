@@ -1,8 +1,24 @@
 const API_BASE = "https://tan-aw-api.onrender.com";
 
+function getUserLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null), // Denied or timed out
+      { timeout: 5000, maximumAge: 60000 }
+    );
+  });
+}
 
-async function sendMessage(message, center = 1) {
-  const url = `${API_BASE}/api/chat?message=${encodeURIComponent(message)}&center=${center}`;
+async function sendMessage(message, center = 1, lat = null, lng = null) {
+  let url = `${API_BASE}/api/chat?message=${encodeURIComponent(message)}&center=${center}`;
+  if (lat !== null && lng !== null) {
+    url += `&lat=${lat}&lng=${lng}`;
+  }
   const res = await fetch(url);
   return res.json();
 }
