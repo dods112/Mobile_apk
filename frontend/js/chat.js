@@ -7,10 +7,10 @@ const infoBtn = document.getElementById("info-btn");
 const infoPanel = document.getElementById("info-panel");
 
 const SUGGESTIONS = [
-  "May Amoxicillin pa?",
-  "Naa moy Paracetamol?",
-  "Open ba ang health center karon?",
-  "Asa ang pinakaduol nga health center?",
+  { text: "May Amoxicillin pa?", icon: "💊" },
+  { text: "Naa moy Paracetamol?", icon: "💊" },
+  { text: "Open ba ang health center karon?", icon: "🕒" },
+  { text: "Asa ang pinakaduol nga health center?", icon: "📍" }
 ];
 
 const LOGO_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M9 11l2 2 4-4"/></svg>`;
@@ -85,7 +85,6 @@ function formatOpenNow(data) {
   return `<strong>${esc(data.center)}</strong> ${esc(data.message)}`;
 }
 
-// Find this function in chat.js and replace it:
 function formatServices(data) {
   if (!data.services || data.services.length === 0) {
     return `<strong>${esc(data.center)}</strong><br>${esc(data.message || "Wala pay natala nga serbisyo.")}`;
@@ -136,22 +135,33 @@ function showWelcome() {
   const row = document.createElement("div");
   row.className = "row bot";
   row.innerHTML = `
-    <div class="avatar" aria-hidden="true">${LOGO_SVG}</div>
+    <div class="avatar" aria-hidden="true" style="width:48px; height:48px; background: var(--secondary);">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2"/>
+        <circle cx="12" cy="5" r="2"/>
+        <path d="M12 7v4"/>
+        <line x1="8" y1="16" x2="8" y2="16.01"/>
+        <line x1="16" y1="16" x2="16" y2="16.01"/>
+      </svg>
+    </div>
     <div class="stack wide">
       <div class="bubble bot welcome">
         <h2>Maayong adlaw!</h2>
         <p>Kamusta! Ako ang Tan-aw AI. Andam ko motabang nimo sa pagpangita sa tambal ug serbisyo sa inyong health center.</p>
+        <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <span style="color: var(--secondary);">✦</span> Pili og usa sa mosunod:
+        </div>
         <div class="chips"></div>
       </div>
     </div>`;
 
   const chips = row.querySelector(".chips");
-  SUGGESTIONS.forEach(text => {
+  SUGGESTIONS.forEach(item => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "chip";
-    btn.textContent = text;
-    btn.addEventListener("click", () => send(text));
+    btn.innerHTML = `<span style="display:flex; align-items:center; gap:10px;"><span style="font-size:1.1rem;">${item.icon}</span> ${item.text}</span>`;
+    btn.addEventListener("click", () => send(item.text));
     chips.appendChild(btn);
   });
 
