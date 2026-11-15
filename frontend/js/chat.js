@@ -6,7 +6,7 @@ const statusText = document.getElementById("status-text");
 const infoBtn = document.getElementById("info-btn");
 const infoPanel = document.getElementById("info-panel");
 
-// --- ADDED MOBILE MENU LOGIC ---
+// --- MOBILE MENU LOGIC ---
 const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 const sidebar = document.getElementById("sidebar");
 const sidebarOverlay = document.getElementById("sidebar-overlay");
