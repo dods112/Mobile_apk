@@ -1,10 +1,6 @@
 from database import get_connection, init_db
 
-# Centers across Surigao del Sur. Coordinates are municipality centroids
-# unless marked verified. Address labels show "(coords approx)" for unverified pins.
-# seed_stock=True inserts initial stock rows; False keeps it as No Current Record.
 CENTERS = [
-    # (name, barangay, phone, address, lat, lng, seed_stock)
     (
         "Tandag City Health Office and Birthing Clinic",
         "Dagocdoc",
@@ -56,14 +52,14 @@ CENTERS = [
     ),
 ]
 
+# name, category, description, aliases
 ITEMS = [
-    ("Amoxicillin 250mg", "medicine", ["amox", "amoxicillin"]),
-    ("Paracetamol", "medicine", ["para", "paracetamol"]),
-    ("ORS", "medicine", ["ors"]),
-    ("BCG Vaccine", "vaccine", ["bcg"]),
+    ("Amoxicillin 250mg", "medicine", "Antibiotic para sa bacterial infections.", ["amox", "amoxicillin"]),
+    ("Paracetamol", "medicine", "Para sa hilanat (fever) ug kasakit sa lawas (pain).", ["para", "paracetamol"]),
+    ("ORS", "medicine", "Oral Rehydration Salts. Para sa dehydration o pagkalibang.", ["ors"]),
+    ("BCG Vaccine", "vaccine", "Bakuna para sa pagpanalipod batok sa Tuberculosis (TB).", ["bcg"]),
 ]
 
-# starting stock per item, in the same order as ITEMS (only used when seed_stock=True)
 STOCK_PLAN = ["out_of_stock", "in_stock", "low_stock", "in_stock"]
 
 
@@ -81,11 +77,23 @@ def reset_and_seed():
         conn.close()
         return
 
+    # Drop and recreate items to apply the new schema cleanly
+    conn.execute("DROP TABLE IF EXISTS item_aliases")
+    conn.execute("DROP TABLE IF EXISTS stock_status")
+    conn.execute("DROP TABLE IF EXISTS items")
+
     for table in [
-        "update_log", "resident_reports", "subscriptions", "stock_status",
-        "item_aliases", "clinic_schedule", "items", "health_centers",
+        "update_log", "resident_reports", "subscriptions",
+        "clinic_schedule", "health_centers",
     ]:
         conn.execute(f"DELETE FROM {table}")
+
+    conn.commit()
+    conn.close()
+    
+    # Re-initialize to recreate the dropped tables with the new schema
+    init_db()
+    conn = get_connection()
 
     for (name, barangay, phone, address, lat, lng, seed_stock) in CENTERS:
         cur = conn.execute(
@@ -96,10 +104,10 @@ def reset_and_seed():
         )
         center_id = cur.lastrowid
 
-        for item_pos, (item_name, category, aliases) in enumerate(ITEMS):
+        for item_pos, (item_name, category, description, aliases) in enumerate(ITEMS):
             cur = conn.execute(
-                "INSERT INTO items (health_center_id, name, category) VALUES (?,?,?)",
-                (center_id, item_name, category),
+                "INSERT INTO items (health_center_id, name, category, description) VALUES (?,?,?,?)",
+                (center_id, item_name, category, description),
             )
             item_id = cur.lastrowid
 

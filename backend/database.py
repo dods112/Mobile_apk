@@ -30,6 +30,7 @@ def init_db():
         health_center_id INTEGER NOT NULL REFERENCES health_centers(id),
         name TEXT NOT NULL,
         category TEXT,
+        description TEXT,
         is_active BOOLEAN DEFAULT 1
     );
 

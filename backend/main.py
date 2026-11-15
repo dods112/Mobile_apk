@@ -177,7 +177,21 @@ def chat(
     }
 
 
-
+@app.get("/api/medicines")
+def list_medicines():
+    conn = get_connection()
+    # Get unique items by name
+    rows = conn.execute(
+        """
+        SELECT name, category, description, MAX(id) as id 
+        FROM items 
+        WHERE is_active = 1
+        GROUP BY name, category, description
+        ORDER BY name
+        """
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 @app.get("/api/centers")
 def list_centers():

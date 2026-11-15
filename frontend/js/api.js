@@ -76,3 +76,8 @@ async function getCenters() {
   const res = await fetch(`${API_BASE}/api/centers`);
   return res.json();
 }
+
+async function getMedicines() {
+  const res = await fetch(`${API_BASE}/api/medicines`);
+  return res.json();
+}
