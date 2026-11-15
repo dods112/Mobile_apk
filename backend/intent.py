@@ -142,6 +142,7 @@ def find_item(text: str, center_id: int):
     return None
 
 
+
 def detect_intent(text: str, center_id: int = 1) -> dict:
     clean = normalize(text)
     words = set(clean.split())
@@ -164,4 +165,19 @@ def detect_intent(text: str, center_id: int = 1) -> dict:
     if any(k in clean for k in MEDICINE_WORDS):
         return {"intent": "list_items", "center": center_id}
 
+        # 5. Check for greetings
+    if any(k in words for k in ["hello", "hi", "maayong", "adlaw", "kumusta", "musta", "kamusta"]):
+        return {"intent": "greeting"}
+
+    # 6. Check for gratitude
+    if any(k in words for k in ["salamat", "salamat", "thank", "thanks", "lamat"]):
+        return {"intent": "thanks"}
+
+    # 7. Check for medical advice (Safety First!)
+    if any(k in words for k in ["tambal sa", "unsay tambal sa", "sakit", "ubo", "hilanat", "sip-on", "lawas"]):
+        # We exclude pure medicine names here, because "unsay tambal sa hilanat" should 
+        # yield a safety warning, not the paracetamol list.
+        return {"intent": "medical_advice"}
+
     return {"intent": "unknown"}
+

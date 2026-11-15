@@ -138,6 +138,23 @@ function formatNearby(data) {
 
 function formatReply(data) {
   if (Array.isArray(data.centers)) return formatNearby(data);
+  
+  // ADD THIS LINE to handle greetings, thanks, and safety warnings
+  if (data.result === "text") return esc(data.message);
+
+  if (data.item && data.availability) return formatStock(data);
+  if (data.item && data.result === "no_current_record") {
+    return `<strong>${esc(data.item)}</strong><br>${esc(data.message)}`;
+  }
+  if (data.open_now !== undefined) return formatOpenNow(data);
+  if (data.services && data.open_now === undefined) return formatServices(data);
+  if (data.result === "list_items") return formatListItems(data);
+
+  return esc(data.message || "May sayop. Sulayi usab.");
+}
+
+function formatReply(data) {
+  if (Array.isArray(data.centers)) return formatNearby(data);
   if (data.item && data.availability) return formatStock(data);
   if (data.item && data.result === "no_current_record") {
     return `<strong>${esc(data.item)}</strong><br>${esc(data.message)}`;

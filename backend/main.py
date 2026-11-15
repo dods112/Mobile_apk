@@ -12,15 +12,36 @@ from schedule import open_now, list_services
 from nearby import find_nearby, TANDAG_CENTER
 from seed_data import reset_and_seed
 
-
 PH_TZ = timezone(timedelta(hours=8))
-NEARBY_WORDS = ("pinakaduol", "duol", "nearest", "nearby", "asa naa", "asa pa", "asa ang")
 
+# Your massive list of location keywords
+NEARBY_WORDS = (
+    "pinakaduol", "pinakaduol nga health center", "duol", "duol nga health center",
+    "duol nga klinika", "duol nga ospital", "duol nga botika", "asa naa", "asa pa",
+    "asa ang", "asa dapit", "asa dapit ang", "asa makita", "asa makit-an",
+    "asa ko makakita", "asa ko moadto", "asa ta moadto", "asa ko makapa checkup",
+    "asa makapalit og tambal", "naa bay duol", "naa bay duol diri", "naa bay health center",
+    "unsa nga lugar", "unsay lokasyon", "lokasyon sa health center", "pila kalayo",
+    "layo ba", "duol ra ba", "direksyon padulong", "unsaon pag-adto", "giunsa pag-adto",
+    "agi padulong", "health center diri", "health center sa amo", "pinakamalapit",
+    "pinakamalapit na health center", "malapit", "malapit na klinika", "malapit na ospital",
+    "malapit na botika", "saan ang", "saan banda", "saan matatagpuan", "saan makikita",
+    "nasaan ang", "may malapit ba", "may malapit dito", "health center dito",
+    "lokasyon ng health center", "address ng health center", "direksyon papunta",
+    "paano pumunta", "gaano kalayo", "malapit lang ba", "saan makakabili ng gamot",
+    "nearest", "nearby", "near me", "closest", "closest to me", "near here",
+    "nearby health center", "nearest health center", "nearest clinic", "nearest hospital",
+    "nearest pharmacy", "health center location", "clinic location", "hospital location",
+    "pharmacy location", "where is", "where can i find", "where can i go", "where to find",
+    "where is located", "directions to", "how to get to", "how far", "distance to",
+    "show me nearby", "find health center", "find a clinic", "health centers around me",
+    "clinics around me", "center", "centro", "health center", "health centre", "clinic",
+    "hospital", "pharmacy", "botika", "dispensary", "health facility", "medical facility"
+)
 
 def to_ph_time(utc_str: str) -> str:
     dt = datetime.fromisoformat(utc_str).replace(tzinfo=timezone.utc)
     return dt.astimezone(PH_TZ).strftime("%b %d, %Y %I:%M %p")
-
 
 def verify_staff_pin(x_staff_pin: str = Header(None)):
     expected_pin = os.getenv("STAFF_PIN")
@@ -28,7 +49,6 @@ def verify_staff_pin(x_staff_pin: str = Header(None)):
         return
     if x_staff_pin != expected_pin:
         raise HTTPException(status_code=401, detail="Invalid or missing Staff PIN")
-
 
 app = FastAPI(title="Tan-aw AI")
 
@@ -47,7 +67,6 @@ STATUS_LABELS = {
     "out_of_stock": "Out of Stock",
 }
 
-
 class StockUpdate(BaseModel):
     item_id: int
     status: str
@@ -55,16 +74,13 @@ class StockUpdate(BaseModel):
     reason: Optional[str] = None
     expected_restock_date: Optional[str] = None
 
-
 @app.get("/")
 def root():
     return {"status": "Tan-aw AI is running"}
 
-
 @app.get("/api/stock")
 def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
     conn = get_connection()
-
     row = conn.execute(
         """
         SELECT i.id, i.name
@@ -124,11 +140,9 @@ def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
         ),
     }
 
-
 @app.get("/api/open-now")
 def check_open_now(center: int = Query(...)):
     return open_now(center)
-
 
 @app.get("/api/nearby")
 def nearby(
@@ -139,7 +153,6 @@ def nearby(
     user_lat = lat if lat is not None else TANDAG_CENTER[0]
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
     return find_nearby(item, user_lat, user_lng)
-
 
 @app.get("/api/chat")
 def chat(
@@ -156,11 +169,33 @@ def chat(
     user_lat = lat if lat is not None else TANDAG_CENTER[0]
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
 
+    # --- CONVERSATIONAL & SAFETY LOGIC ---
+    if result["intent"] == "greeting":
+        return {"result": "text", "message": "Maayong adlaw! Welcome sa Tan-aw AI. Unsa akong ikatabang nimo karon?"}
+        
+    if result["intent"] == "thanks":
+        return {"result": "text", "message": "Walay sapayan! Amping kanunay ug hinaot nga maayo imong panglawas!"}
+        
+    if result["intent"] == "medical_advice":
+        return {
+            "result": "text", 
+            "message": "Pasensya, ako usa lamang ka information assistant ug dili makahatag og medikal nga tambag o reseta. Palihug konsulta sa doktor o nurse sa health center para sa imong kahimtang."
+        }
+    # --------------------------------------
+
     if result["intent"] == "open_now":
         return open_now(center)
 
     if result["intent"] == "services":
         return list_services(center)
+        
+    if result["intent"] == "list_items":
+        items_data = list_items(center)
+        return {
+            "result": "list_items",
+            "items": items_data,
+            "message": "Kini ang mga tambal nga naa sa among listahan karon:"
+        }
 
     if wants_nearby and result["intent"] == "stock":
         return find_nearby(result["item"], user_lat, user_lng)
@@ -175,39 +210,6 @@ def chat(
         "result": "unknown",
         "message": "Pasensya, wala ko kasabot. Pangutana bahin sa tambal, bakuna, o kung bukas ba ang center.",
     }
-
-
-@app.get("/api/medicines")
-def list_medicines():
-    conn = get_connection()
-    # Get unique items by name
-    rows = conn.execute(
-        """
-        SELECT name, category, description, MAX(id) as id 
-        FROM items 
-        WHERE is_active = 1
-        GROUP BY name, category, description
-        ORDER BY name
-        """
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-@app.get("/api/centers")
-def list_centers():
-    conn = get_connection()
-    rows = conn.execute(
-        """
-        SELECT id, name, barangay, address, contact_number, latitude, longitude 
-        FROM health_centers 
-        ORDER BY name
-        """
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-@app.get("/api/chat")
-
 
 @app.post("/api/staff/update", dependencies=[Depends(verify_staff_pin)])
 def update_stock(data: StockUpdate):
@@ -237,7 +239,6 @@ def update_stock(data: StockUpdate):
     conn.close()
     return {"ok": True, "item": item["name"], "status": STATUS_LABELS[data.status]}
 
-
 @app.post("/api/staff/confirm", dependencies=[Depends(verify_staff_pin)])
 def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
     conn = get_connection()
@@ -257,7 +258,6 @@ def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
     conn.commit()
     conn.close()
     return {"ok": True}
-
 
 @app.get("/api/items")
 def list_items(center: int = Query(...)):
@@ -292,7 +292,6 @@ def list_items(center: int = Query(...)):
         }
         for r in rows
     ]
-
 
 @app.get("/api/staff/attention", dependencies=[Depends(verify_staff_pin)])
 def needs_attention(center: int = Query(...)):
