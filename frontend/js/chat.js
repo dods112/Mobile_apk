@@ -6,6 +6,22 @@ const statusText = document.getElementById("status-text");
 const infoBtn = document.getElementById("info-btn");
 const infoPanel = document.getElementById("info-panel");
 
+// --- ADDED MOBILE MENU LOGIC ---
+const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+mobileMenuBtn.addEventListener("click", () => {
+  sidebar.classList.add("open");
+  sidebarOverlay.classList.add("open");
+});
+
+sidebarOverlay.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  sidebarOverlay.classList.remove("open");
+});
+// -------------------------------
+
 const SUGGESTIONS = [
   { text: "May Amoxicillin pa?", icon: "💊" },
   { text: "Naa moy Paracetamol?", icon: "💊" },
