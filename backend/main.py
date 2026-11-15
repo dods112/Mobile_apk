@@ -14,7 +14,6 @@ from seed_data import reset_and_seed
 
 PH_TZ = timezone(timedelta(hours=8))
 
-# Your massive list of location keywords
 NEARBY_WORDS = (
     "pinakaduol", "pinakaduol nga health center", "duol", "duol nga health center",
     "duol nga klinika", "duol nga ospital", "duol nga botika", "asa naa", "asa pa",
@@ -163,25 +162,16 @@ def chat(
 ):
     lowered = message.lower()
     wants_nearby = any(word in lowered for word in NEARBY_WORDS)
-
     result = detect_intent(message, center)
-
     user_lat = lat if lat is not None else TANDAG_CENTER[0]
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
 
-    # --- CONVERSATIONAL & SAFETY LOGIC ---
     if result["intent"] == "greeting":
         return {"result": "text", "message": "Maayong adlaw! Welcome sa Tan-aw AI. Unsa akong ikatabang nimo karon?"}
-        
     if result["intent"] == "thanks":
         return {"result": "text", "message": "Walay sapayan! Amping kanunay ug hinaot nga maayo imong panglawas!"}
-        
     if result["intent"] == "medical_advice":
-        return {
-            "result": "text", 
-            "message": "Pasensya, ako usa lamang ka information assistant ug dili makahatag og medikal nga tambag o reseta. Palihug konsulta sa doktor o nurse sa health center para sa imong kahimtang."
-        }
-    # --------------------------------------
+        return {"result": "text", "message": "Pasensya, ako usa lamang ka information assistant ug dili makahatag og medikal nga tambag o reseta. Palihug konsulta sa doktor o nurse sa health center para sa imong kahimtang."}
 
     if result["intent"] == "open_now":
         return open_now(center)
@@ -206,58 +196,29 @@ def chat(
     if result["intent"] == "stock":
         return check_stock(item=result["item"], center=center)
 
-    return {
-        "result": "unknown",
-        "message": "Pasensya, wala ko kasabot. Pangutana bahin sa tambal, bakuna, o kung bukas ba ang center.",
-    }
+    return {"result": "unknown", "message": "Pasensya, wala ko kasabot. Pangutana bahin sa tambal, bakuna, o kung bukas ba ang center."}
 
-@app.post("/api/staff/update", dependencies=[Depends(verify_staff_pin)])
-def update_stock(data: StockUpdate):
-    if data.status not in STATUS_LABELS:
-        raise HTTPException(status_code=400, detail="Invalid status")
-
+@app.get("/api/centers")
+def get_centers():
     conn = get_connection()
-    item = conn.execute(
-        "SELECT health_center_id, name FROM items WHERE id = ?", (data.item_id,)
-    ).fetchone()
-    if item is None:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    conn.execute(
-        """
-        INSERT INTO stock_status (item_id, status, reason, expected_restock_date, updated_by)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (data.item_id, data.status, data.reason, data.expected_restock_date, data.updated_by),
-    )
-    conn.execute(
-        "INSERT INTO update_log (health_center_id, staff_name, action) VALUES (?, ?, ?)",
-        (item["health_center_id"], data.updated_by, f"{item['name']}: {data.status}"),
-    )
-    conn.commit()
+    rows = conn.execute("SELECT id, name, barangay, address, contact_number, latitude, longitude FROM health_centers ORDER BY name").fetchall()
     conn.close()
-    return {"ok": True, "item": item["name"], "status": STATUS_LABELS[data.status]}
+    return [dict(r) for r in rows]
 
-@app.post("/api/staff/confirm", dependencies=[Depends(verify_staff_pin)])
-def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
+@app.get("/api/medicines")
+def list_medicines():
     conn = get_connection()
-    conn.execute(
+    rows = conn.execute(
         """
-        UPDATE stock_status
-        SET last_confirmed_at = CURRENT_TIMESTAMP, updated_by = ?
-        WHERE id = (
-            SELECT id FROM stock_status
-            WHERE item_id = ?
-            ORDER BY status_changed_at DESC, id DESC
-            LIMIT 1
-        )
-        """,
-        (updated_by, item_id),
-    )
-    conn.commit()
+        SELECT name, category, description, MAX(id) as id 
+        FROM items 
+        WHERE is_active = 1
+        GROUP BY name, category, description
+        ORDER BY name
+        """
+    ).fetchall()
     conn.close()
-    return {"ok": True}
+    return [dict(r) for r in rows]
 
 @app.get("/api/items")
 def list_items(center: int = Query(...)):
@@ -293,6 +254,51 @@ def list_items(center: int = Query(...)):
         for r in rows
     ]
 
+@app.post("/api/staff/update", dependencies=[Depends(verify_staff_pin)])
+def update_stock(data: StockUpdate):
+    if data.status not in STATUS_LABELS:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    conn = get_connection()
+    item = conn.execute(
+        "SELECT health_center_id, name FROM items WHERE id = ?", (data.item_id,)
+    ).fetchone()
+    if item is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    conn.execute(
+        "INSERT INTO stock_status (item_id, status, reason, expected_restock_date, updated_by) VALUES (?, ?, ?, ?, ?)",
+        (data.item_id, data.status, data.reason, data.expected_restock_date, data.updated_by),
+    )
+    conn.execute(
+        "INSERT INTO update_log (health_center_id, staff_name, action) VALUES (?, ?, ?)",
+        (item["health_center_id"], data.updated_by, f"{item['name']}: {data.status}"),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "item": item["name"], "status": STATUS_LABELS[data.status]}
+
+@app.post("/api/staff/confirm", dependencies=[Depends(verify_staff_pin)])
+def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
+    conn = get_connection()
+    conn.execute(
+        """
+        UPDATE stock_status
+        SET last_confirmed_at = CURRENT_TIMESTAMP, updated_by = ?
+        WHERE id = (
+            SELECT id FROM stock_status
+            WHERE item_id = ?
+            ORDER BY status_changed_at DESC, id DESC
+            LIMIT 1
+        )
+        """,
+        (updated_by, item_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
 @app.get("/api/staff/attention", dependencies=[Depends(verify_staff_pin)])
 def needs_attention(center: int = Query(...)):
     conn = get_connection()
@@ -310,9 +316,7 @@ def needs_attention(center: int = Query(...)):
         """,
         (center,),
     ).fetchall()
-    config = conn.execute(
-        "SELECT fresh_max_hours, aging_max_hours FROM freshness_config WHERE id = 1"
-    ).fetchone()
+    config = conn.execute("SELECT fresh_max_hours, aging_max_hours FROM freshness_config WHERE id = 1").fetchone()
     conn.close()
 
     flagged = []
@@ -320,16 +324,7 @@ def needs_attention(center: int = Query(...)):
         if r["last_confirmed_at"] is None:
             flagged.append({"name": r["name"], "reason": "no_record"})
             continue
-        f = freshness_state(
-            r["last_confirmed_at"],
-            config["fresh_max_hours"],
-            config["aging_max_hours"],
-        )
+        f = freshness_state(r["last_confirmed_at"], config["fresh_max_hours"], config["aging_max_hours"])
         if f["state"] != "fresh":
-            flagged.append({
-                "name": r["name"],
-                "reason": f["state"],
-                "hours_since_confirmed": f["hours_since_confirmed"],
-            })
-
+            flagged.append({"name": r["name"], "reason": f["state"], "hours_since_confirmed": f["hours_since_confirmed"]})
     return {"count": len(flagged), "items": flagged}

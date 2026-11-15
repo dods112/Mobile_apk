@@ -2,9 +2,6 @@ import re
 from rapidfuzz import process, fuzz
 from database import get_connection
 
-# ==========================================
-# 1. HEALTH CENTER OPERATING HOURS
-# ==========================================
 OPEN_KEYWORDS = [
     "open", "opened", "opening", "close", "closed", "closing",
     "operating hours", "clinic hours", "office hours", "business hours",
@@ -28,9 +25,6 @@ OPEN_KEYWORDS = [
     "unsay schedule ninyo", "naa moy duty karon", "unsa ka oras", "abli ba mo ugma"
 ]
 
-# ==========================================
-# 2. HEALTH CENTER SERVICES
-# ==========================================
 SERVICES_KEYWORDS = [
     "service", "services", "medical services", "health services", "consultation",
     "checkup", "medical checkup", "doctor", "doctors", "physician", "nurse",
@@ -46,10 +40,9 @@ SERVICES_KEYWORDS = [
     "may doktor ba", "may nars ba", "may midwife ba", "magpapabakuna",
     "saan pwede magpatingin", "gusto ko magpacheckup", "prenatal checkup",
     "family planning", "pagpapabakuna", "serbisyong pangkalusugan",
-    "unsa inyong serbisyo", "unsay serbisyo",
-    "unsa nga serbisyo", "naa moy checkup", "naa moy doktor", "naa moy nurse",
-    "naa moy midwife", "magpakonsulta", "magpa checkup", "magpa konsulta",
-    "magpatan-aw", "magpa tambal", "pa checkup",
+    "unsa inyong serbisyo", "unsay serbisyo", "unsa nga serbisyo", "naa moy checkup", 
+    "naa moy doktor", "naa moy nurse", "naa moy midwife", "magpakonsulta", 
+    "magpa checkup", "magpa konsulta", "magpatan-aw", "magpa tambal", "pa checkup",
     "pagpabakuna", "unsay pwede makuha", "unsa ang inyong serbisyo",
     "magpatambal", "magpatinggal", "unsay ma-offer ninyo", "unsa mga serbisyo naa ninyo",
     "naa bay doctor karon", "naa bay nars", "gusto ko magpacheckup",
@@ -57,9 +50,6 @@ SERVICES_KEYWORDS = [
     "naa bay family planning", "naa bay bakunahan", "naa moy dental", "naa moy laboratory"
 ]
 
-# ==========================================
-# 3. MEDICINE AVAILABILITY
-# ==========================================
 MEDICINE_WORDS = [
     "tambal", "medicine", "medicines", "medication", "medications", "drug", "drugs",
     "available", "availability", "avail", "in stock", "out of stock", "stock",
@@ -90,12 +80,10 @@ MEDICINE_WORDS = [
     "ascorbic acid", "ferrous", "amlodipine", "metoprolol"
 ]
 
-
 def normalize(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     return re.sub(r"\s+", " ", text)
-
 
 def find_item(text: str, center_id: int):
     conn = get_connection()
@@ -126,12 +114,10 @@ def find_item(text: str, center_id: int):
             candidates.append(alias_clean)
             name_map[alias_clean] = full_name
 
-    # 1. Exact match
     for word in words:
         if word in candidates:
             return name_map[word]
 
-    # 2. Fuzzy match (handles typos like "parasetamol")
     for word in words:
         if len(word) < 3:
             continue
@@ -141,43 +127,30 @@ def find_item(text: str, center_id: int):
 
     return None
 
-
-
 def detect_intent(text: str, center_id: int = 1) -> dict:
     clean = normalize(text)
     words = set(clean.split())
 
-    # 1. Check for specific medicine first (e.g., "Meron bang paracetamol?")
     item = find_item(clean, center_id)
     if item:
         return {"intent": "stock", "item": item, "center": center_id}
 
-    # 2. Check for Open/Closed intent
-    # Using substring search instead of exact word match to catch phrases like "unsa oras"
     if any(k in clean for k in OPEN_KEYWORDS):
         return {"intent": "open_now", "center": center_id}
 
-    # 3. Check for Services intent
     if any(k in clean for k in SERVICES_KEYWORDS):
         return {"intent": "services", "center": center_id}
 
-    # 4. Check for general medicine queries (e.g., "Unsay tambal ninyo?")
     if any(k in clean for k in MEDICINE_WORDS):
         return {"intent": "list_items", "center": center_id}
 
-        # 5. Check for greetings
     if any(k in words for k in ["hello", "hi", "maayong", "adlaw", "kumusta", "musta", "kamusta"]):
         return {"intent": "greeting"}
 
-    # 6. Check for gratitude
     if any(k in words for k in ["salamat", "salamat", "thank", "thanks", "lamat"]):
         return {"intent": "thanks"}
 
-    # 7. Check for medical advice (Safety First!)
     if any(k in words for k in ["tambal sa", "unsay tambal sa", "sakit", "ubo", "hilanat", "sip-on", "lawas"]):
-        # We exclude pure medicine names here, because "unsay tambal sa hilanat" should 
-        # yield a safety warning, not the paracetamol list.
         return {"intent": "medical_advice"}
 
     return {"intent": "unknown"}
-

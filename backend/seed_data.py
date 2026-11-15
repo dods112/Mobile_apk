@@ -53,7 +53,6 @@ CENTERS = [
     ),
 ]
 
-# name, category, description, aliases
 ITEMS = [
     ("Amoxicillin 250mg", "medicine", "Antibiotic para sa bacterial infections.", ["amox", "amoxicillin"]),
     ("Paracetamol", "medicine", "Para sa hilanat (fever) ug kasakit sa lawas (pain).", ["para", "paracetamol"]),
@@ -63,31 +62,24 @@ ITEMS = [
 
 STOCK_PLAN = ["out_of_stock", "in_stock", "low_stock", "in_stock"]
 
-
 def reset_and_seed():
     conn = get_connection()
     
-    # 1. Check if database needs to be reseeded or schema updated
     needs_reseed = False
     try:
-        # Check if the new description column exists
         conn.execute("SELECT description FROM items LIMIT 1")
-        
-        # Check if center count matches
         total = conn.execute("SELECT COUNT(*) FROM health_centers").fetchone()[0]
         placeholders = conn.execute("SELECT COUNT(*) FROM health_centers WHERE LOWER(name) LIKE '%placeholder%'").fetchone()[0]
         
         if total != len(CENTERS) or placeholders > 0:
             needs_reseed = True
     except sqlite3.OperationalError:
-        # Table or column doesn't exist, needs reseed
         needs_reseed = True
         
     if not needs_reseed:
         conn.close()
         return
 
-    # 2. Drop ALL tables to handle schema changes cleanly
     conn.executescript("""
         DROP TABLE IF EXISTS item_aliases;
         DROP TABLE IF EXISTS stock_status;
@@ -103,11 +95,9 @@ def reset_and_seed():
     conn.commit()
     conn.close()
     
-    # 3. Recreate the schema using the updated database.py
     init_db()
     conn = get_connection()
 
-    # 4. Insert the seed data
     for (name, barangay, phone, address, lat, lng, seed_stock) in CENTERS:
         cur = conn.execute(
             """INSERT INTO health_centers

@@ -3,13 +3,11 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "tanaw.db"
 
-
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
-
 
 def init_db():
     conn = get_connection()
@@ -106,11 +104,9 @@ def init_db():
     );
     """)
 
-    # Default freshness thresholds, inserted only once
     conn.execute("INSERT OR IGNORE INTO freshness_config (id) VALUES (1)")
     conn.commit()
     conn.close()
-
 
 if __name__ == "__main__":
     init_db()
