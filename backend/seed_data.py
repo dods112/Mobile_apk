@@ -1,3 +1,4 @@
+import sqlite3
 from database import get_connection, init_db
 
 CENTERS = [
@@ -64,37 +65,49 @@ STOCK_PLAN = ["out_of_stock", "in_stock", "low_stock", "in_stock"]
 
 
 def reset_and_seed():
-    init_db()
     conn = get_connection()
-
-    total = conn.execute("SELECT COUNT(*) FROM health_centers").fetchone()[0]
-    placeholders = conn.execute(
-        "SELECT COUNT(*) FROM health_centers WHERE LOWER(name) LIKE '%placeholder%'"
-    ).fetchone()[0]
-
-    # Only reseed when the center list changed or leftover placeholders exist.
-    if total == len(CENTERS) and placeholders == 0:
+    
+    # 1. Check if database needs to be reseeded or schema updated
+    needs_reseed = False
+    try:
+        # Check if the new description column exists
+        conn.execute("SELECT description FROM items LIMIT 1")
+        
+        # Check if center count matches
+        total = conn.execute("SELECT COUNT(*) FROM health_centers").fetchone()[0]
+        placeholders = conn.execute("SELECT COUNT(*) FROM health_centers WHERE LOWER(name) LIKE '%placeholder%'").fetchone()[0]
+        
+        if total != len(CENTERS) or placeholders > 0:
+            needs_reseed = True
+    except sqlite3.OperationalError:
+        # Table or column doesn't exist, needs reseed
+        needs_reseed = True
+        
+    if not needs_reseed:
         conn.close()
         return
 
-    # Drop and recreate items to apply the new schema cleanly
-    conn.execute("DROP TABLE IF EXISTS item_aliases")
-    conn.execute("DROP TABLE IF EXISTS stock_status")
-    conn.execute("DROP TABLE IF EXISTS items")
-
-    for table in [
-        "update_log", "resident_reports", "subscriptions",
-        "clinic_schedule", "health_centers",
-    ]:
-        conn.execute(f"DELETE FROM {table}")
-
+    # 2. Drop ALL tables to handle schema changes cleanly
+    conn.executescript("""
+        DROP TABLE IF EXISTS item_aliases;
+        DROP TABLE IF EXISTS stock_status;
+        DROP TABLE IF EXISTS items;
+        DROP TABLE IF EXISTS clinic_schedule;
+        DROP TABLE IF EXISTS update_log;
+        DROP TABLE IF EXISTS subscriptions;
+        DROP TABLE IF EXISTS resident_reports;
+        DROP TABLE IF EXISTS residents;
+        DROP TABLE IF EXISTS health_centers;
+        DROP TABLE IF EXISTS freshness_config;
+    """)
     conn.commit()
     conn.close()
     
-    # Re-initialize to recreate the dropped tables with the new schema
+    # 3. Recreate the schema using the updated database.py
     init_db()
     conn = get_connection()
 
+    # 4. Insert the seed data
     for (name, barangay, phone, address, lat, lng, seed_stock) in CENTERS:
         cur = conn.execute(
             """INSERT INTO health_centers
