@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from database import get_connection
 from freshness import freshness_state
 from intent import detect_intent
-from schedule import open_now
+from schedule import open_now, list_services
 from nearby import find_nearby, TANDAG_CENTER
 from seed_data import reset_and_seed
 
@@ -25,7 +25,7 @@ def to_ph_time(utc_str: str) -> str:
 def verify_staff_pin(x_staff_pin: str = Header(None)):
     expected_pin = os.getenv("STAFF_PIN")
     if not expected_pin:
-        return  # No PIN set (local dev)
+        return
     if x_staff_pin != expected_pin:
         raise HTTPException(status_code=401, detail="Invalid or missing Staff PIN")
 
@@ -158,6 +158,9 @@ def chat(
 
     if result["intent"] == "open_now":
         return open_now(center)
+
+    if result["intent"] == "services":
+        return list_services(center)
 
     if wants_nearby and result["intent"] == "stock":
         return find_nearby(result["item"], user_lat, user_lng)

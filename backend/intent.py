@@ -2,6 +2,7 @@ import re
 from database import get_connection
 
 OPEN_KEYWORDS = ["open", "bukas", "sirado", "closed"]
+SERVICES_KEYWORDS = ["serbisyo", "services", "checkup", "consultation"]
 
 
 def normalize(text: str) -> str:
@@ -39,6 +40,9 @@ def detect_intent(text: str, center_id: int = 1) -> dict:
 
     if any(k in words for k in OPEN_KEYWORDS):
         return {"intent": "open_now", "center": center_id}
+
+    if any(k in words for k in SERVICES_KEYWORDS):
+        return {"intent": "services", "center": center_id}
 
     item = find_item(clean, center_id)
     if item:

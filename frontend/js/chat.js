@@ -85,6 +85,14 @@ function formatOpenNow(data) {
   return `<strong>${esc(data.center)}</strong> ${esc(data.message)}`;
 }
 
+function formatServices(data) {
+  if (!data.services || data.services.length === 0) {
+    return `<strong>${esc(data.center)}</strong><br>${esc(data.message || "Wala pay natala nga serbisyo.")}`;
+  }
+  const list = data.services.map(s => `- ${esc(s)}`).join("<br>");
+  return `<strong>${esc(data.center)}</strong> naghatag sa mosunod nga serbisyo:<br><br>${list}`;
+}
+
 function formatNearby(data) {
   if (!data.centers.length) {
     return data.item
@@ -119,6 +127,7 @@ function formatReply(data) {
     return `<strong>${esc(data.item)}</strong><br>${esc(data.message)}`;
   }
   if (data.open_now !== undefined) return formatOpenNow(data);
+  if (data.services && data.open_now === undefined) return formatServices(data);
   return esc(data.message || "May sayop. Sulayi usab.");
 }
 
@@ -159,7 +168,6 @@ async function send(text) {
   const bubble = row.querySelector(".bubble");
 
   try {
-    // Detect if user is asking for nearby centers
     const nearbyKeywords = ["duol", "asa", "center", "pinakaduol", "nearest", "find"];
     const isNearby = nearbyKeywords.some(kw => clean.toLowerCase().includes(kw));
     
@@ -176,7 +184,6 @@ async function send(text) {
     const data = await sendMessage(clean, 1, lat, lng);
     let html = formatReply(data);
 
-    // Add GPS fallback notice
     if (isNearby && (!lat || !lng)) {
       html += `<div class="notice" style="font-size: 0.8em; margin-top: 8px; color: #666;">📍 Wala nakuha ang imong GPS. Gibase sa Tandag City.</div>`;
     }
