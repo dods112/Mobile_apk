@@ -177,6 +177,24 @@ def chat(
     }
 
 
+
+
+@app.get("/api/centers")
+def list_centers():
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT id, name, barangay, address, contact_number, latitude, longitude 
+        FROM health_centers 
+        ORDER BY name
+        """
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.get("/api/chat")
+
+
 @app.post("/api/staff/update", dependencies=[Depends(verify_staff_pin)])
 def update_stock(data: StockUpdate):
     if data.status not in STATUS_LABELS:

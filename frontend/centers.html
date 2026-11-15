@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ceb">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#087F75">
+  <title>Mga Health Center - Tan-aw AI</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23087F75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z'/%3E%3Cpath d='M9 11l2 2 4-4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Extra styles just for this page */
+    .center-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border: 1px solid #e0e0e0;
+    }
+    .center-card h3 { margin-bottom: 8px; color: #087F75; font-size: 1.1rem; }
+    .center-card p { margin-bottom: 4px; font-size: 0.9em; color: #444; }
+    .center-card .btn-map {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 8px 16px;
+      background: #12B8A6;
+      color: white;
+      text-decoration: none;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: bold;
+    }
+    .back-btn {
+      color: white;
+      text-decoration: none;
+      font-size: 1.5rem;
+      margin-right: 12px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body style="background: #F0F8F6;">
+
+  <header class="topbar">
+    <div class="brand">
+      <a href="index.html" class="back-btn" aria-label="Back to chat">&larr;</a>
+      <div class="brand-text">
+        <h1>Mga Health Center</h1>
+        <p>Surigao del Sur</p>
+      </div>
+    </div>
+  </header>
+
+  <main id="center-list" style="padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 40px;">
+    <p style="text-align:center; color:#666;">Nag-load sa mga center...</p>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script>
+    async function loadCenters() {
+      const list = document.getElementById("center-list");
+      try {
+        const centers = await getCenters();
+        list.innerHTML = ""; // Clear loading text
+
+        centers.forEach(c => {
+          const card = document.createElement("div");
+          card.className = "center-card";
+          
+          const phone = c.contact_number ? `Tel: ${c.contact_number}` : "Tel: Wala pa";
+          const address = c.address || `Barangay ${c.barangay}, Surigao del Sur`;
+          const mapUrl = `https://www.google.com/maps/search/?api=1&query=${c.latitude},${c.longitude}`;
+
+          card.innerHTML = `
+            <h3>${c.name}</h3>
+            <p>${address}</p>
+            <p style="color: #666;">${phone}</p>
+            <a href="${mapUrl}" target="_blank" class="btn-map">📍 View on Map</a>
+          `;
+          list.appendChild(card);
+        });
+
+      } catch (err) {
+        list.innerHTML = `<p style="color:red; text-align:center;">Failed to load centers. Check your internet.</p>`;
+      }
+    }
+
+    loadCenters();
+  </script>
+</body>
+</html>

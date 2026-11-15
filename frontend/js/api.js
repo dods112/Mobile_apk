@@ -71,3 +71,8 @@ async function getAttention(center = 1) {
   }
   return res.json();
 }
+
+async function getCenters() {
+  const res = await fetch(`${API_BASE}/api/centers`);
+  return res.json();
+}

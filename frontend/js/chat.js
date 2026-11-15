@@ -85,6 +85,7 @@ function formatOpenNow(data) {
   return `<strong>${esc(data.center)}</strong> ${esc(data.message)}`;
 }
 
+// Find this function in chat.js and replace it:
 function formatServices(data) {
   if (!data.services || data.services.length === 0) {
     return `<strong>${esc(data.center)}</strong><br>${esc(data.message || "Wala pay natala nga serbisyo.")}`;
