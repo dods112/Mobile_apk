@@ -89,8 +89,8 @@ function formatServices(data) {
   if (!data.services || data.services.length === 0) {
     return `<strong>${esc(data.center)}</strong><br>${esc(data.message || "Wala pay natala nga serbisyo.")}`;
   }
-  const list = data.services.map(s => `- ${esc(s)}`).join("<br>");
-  return `<strong>${esc(data.center)}</strong> naghatag sa mosunod nga serbisyo:<br><br>${list}`;
+  const list = data.services.map(s => `<li>${esc(s)}</li>`).join("");
+  return `<strong>${esc(data.center)}</strong> naghatag sa mosunod nga serbisyo:<ul style="margin-top: 8px; padding-left: 20px;">${list}</ul>`;
 }
 
 function formatNearby(data) {
