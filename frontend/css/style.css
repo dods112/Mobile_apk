@@ -20,13 +20,15 @@ body {
   background-color: var(--bg);
   color: var(--text-main);
   height: 100vh;
+  height: 100dvh; /* Fixes mobile browser address bar issue */
   overflow: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* --- LAYOUT --- */
 .app-layout {
   display: flex;
-  height: 100vh;
+  height: 100%;
   width: 100vw;
 }
 
@@ -110,10 +112,10 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 100%;
   background: var(--bg);
-  height: 100vh;
+  height: 100%;
+  overflow: hidden;
 }
 
 .topbar {
@@ -172,6 +174,7 @@ body {
 .chat {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 24px 24px;
   display: flex;
   flex-direction: column;
@@ -179,7 +182,7 @@ body {
   scroll-behavior: smooth;
 }
 
-.row { display: flex; gap: 12px; max-width: 85%; }
+.row { display: flex; gap: 12px; max-width: 85%; width: fit-content; }
 .row.user { align-self: flex-end; flex-direction: row-reverse; }
 .row.bot { align-self: flex-start; }
 
@@ -193,7 +196,7 @@ body {
   margin-top: auto;
 }
 
-.stack { display: flex; flex-direction: column; gap: 4px; }
+.stack { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .stack.wide { max-width: 100%; width: 100%; }
 .row.user .stack { align-items: flex-end; }
 
@@ -203,6 +206,8 @@ body {
   font-size: 0.95rem;
   line-height: 1.5;
   box-shadow: var(--shadow);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .bubble.user {
@@ -217,28 +222,29 @@ body {
   border-bottom-left-radius: 4px;
 }
 
-.bubble.welcome { padding: 24px; border-radius: var(--radius); width: 100%; }
-.bubble.welcome h2 { font-size: 1.4rem; color: var(--primary); margin-bottom: 8px; }
-.bubble.welcome p { color: var(--text-muted); margin-bottom: 20px; }
+.bubble.welcome { padding: 20px; border-radius: var(--radius); width: 100%; }
+.bubble.welcome h2 { font-size: 1.3rem; color: var(--primary); margin-bottom: 8px; }
+.bubble.welcome p { color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem; }
 
 time { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
 
 /* --- WELCOME CHIPS --- */
-.chips { display: flex; flex-direction: column; gap: 10px; }
+.chips { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .chip {
   background: var(--bg);
   border: 1px solid var(--light-green);
   color: var(--text-main);
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-radius: 12px;
   text-align: left;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
 }
 .chip:hover { border-color: var(--accent); background: var(--light-green); color: var(--primary); }
 .chip::after { content: '›'; font-size: 1.2rem; color: var(--primary); font-weight: bold; }
@@ -264,11 +270,12 @@ time { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; padding: 0
   background: var(--surface);
   border: 1px solid var(--light-green);
   border-radius: 12px;
-  padding: 16px 8px;
+  padding: 12px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   color: var(--primary);
   font-size: 0.8rem;
   font-weight: 600;
@@ -298,6 +305,7 @@ time { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; padding: 0
   background: var(--surface);
   color: var(--text-main);
   transition: border-color 0.2s ease;
+  min-width: 0; /* Prevents input from overflowing flex container */
 }
 .composer input:focus { border-color: var(--primary); }
 
@@ -325,33 +333,50 @@ time { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; padding: 0
 .mobile-only { display: none; }
 
 @media (max-width: 768px) {
+  /* Handles the notch/status bar at the top */
+  .topbar { 
+    padding-top: max(16px, env(safe-area-inset-top)); 
+    padding-bottom: 12px;
+    padding-left: 16px;
+    padding-right: 16px;
+    background: var(--surface); 
+    border-bottom: 1px solid var(--light-green); 
+    align-items: center;
+  }
+
+  /* Handles the home indicator at the bottom */
+  .composer {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100%;
     transform: translateX(-100%);
   }
   
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  
-  .sidebar-overlay.open {
-    display: block;
-    opacity: 1;
-  }
-  
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.open { display: block; opacity: 1; }
   .mobile-only { display: flex; }
   
-  .brand-mobile { display: flex; align-items: center; gap: 12px; }
-  .brand-mobile .logo { background: var(--primary); color: white; padding: 8px; border-radius: 10px; display: flex; }
-  .brand-mobile h1 { font-size: 1.1rem; color: var(--primary); }
-  .brand-mobile p { font-size: 0.7rem; color: var(--text-muted); }
-
-  .topbar { padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--light-green); }
+  /* Compact the mobile header so it doesn't overlap */
+  .brand-mobile { display: flex; align-items: center; gap: 8px; }
+  .brand-mobile .logo { background: var(--primary); color: white; padding: 6px; border-radius: 8px; display: flex; }
+  .brand-mobile h1 { font-size: 1.1rem; color: var(--primary); line-height: 1.1; }
+  .brand-mobile p { font-size: 0.7rem; color: var(--text-muted); display: none; /* Hide tagline on mobile to save space */ }
+  
+  .status { padding: 6px; }
+  .status #status-text { display: none; } /* Hide 'Online' text, just show the green dot */
+  
   .chat { padding: 16px; }
-  .row { max-width: 95%; }
+  
+  /* Fix the chat bubbles pushing off-screen */
+  .row { max-width: 100%; }
+  .bubble.welcome { padding: 16px; }
   
   .quick {
     display: flex;
@@ -359,11 +384,11 @@ time { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; padding: 0
     padding: 0 16px 16px;
     gap: 12px;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
   .quick::-webkit-scrollbar { display: none; }
-  .quick-btn { min-width: 100px; padding: 12px 8px; flex-shrink: 0; }
+  .quick-btn { min-width: 90px; padding: 10px 6px; flex-shrink: 0; }
   
-  .composer { padding: 0 16px 16px; }
-  .composer input { padding: 14px 16px; }
+  .composer input { padding: 12px 16px; }
   .composer .send { width: 48px; height: 48px; }
-}
+} 
