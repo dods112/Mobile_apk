@@ -1,61 +1,62 @@
-const API_BASE = "https://tan-aw-api.onrender.com";
+﻿// Local development. For the online server, use "https://tan-aw-api.onrender.com"
+const API_BASE = "http://127.0.0.1:8000";
 
-function getStaffPin() { return localStorage.getItem("tanaw_staff_pin") || ""; }
-
-function getUserLocation() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) { resolve(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null), 
-      { timeout: 5000, maximumAge: 60000 }
-    );
-  });
+async function getJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json();
 }
 
-async function sendMessage(message, center = 1, lat = null, lng = null) {
-  let url = `${API_BASE}/api/chat?message=${encodeURIComponent(message)}&center=${center}`;
-  if (lat !== null && lng !== null) url += `&lat=${lat}&lng=${lng}`;
-  const res = await fetch(url);
-  return res.json();
+async function sendMessage(message, center = 1, loc = null) {
+  const params = new URLSearchParams({ message, center: String(center), lang: currentLang });
+  if (loc) {
+    params.set("lat", String(loc.lat));
+    params.set("lng", String(loc.lng));
+  }
+  return getJson(`${API_BASE}/api/chat?${params.toString()}`);
 }
 
 async function getItems(center = 1) {
-  const res = await fetch(`${API_BASE}/api/items?center=${center}`);
-  return res.json();
+  return getJson(`${API_BASE}/api/items?center=${center}`);
+}
+
+async function getCenters() {
+  return getJson(`${API_BASE}/api/centers`);
+}
+
+async function getMedicines() {
+  return getJson(`${API_BASE}/api/medicines`);
+}
+
+async function getAttention(center = 1) {
+  return getJson(`${API_BASE}/api/staff/attention?center=${center}`);
+}
+
+// NEW (Phase 1)
+async function getOpenNow(center = 1) {
+  return getJson(`${API_BASE}/api/open-now?center=${center}`);
+}
+
+// NEW (Phase 1)
+async function getCenterProfile(centerId) {
+  return getJson(`${API_BASE}/api/centers/${centerId}/profile`);
 }
 
 async function updateStatus(itemId, status, updatedBy) {
   const res = await fetch(`${API_BASE}/api/staff/update`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Staff-Pin": getStaffPin() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ item_id: itemId, status, updated_by: updatedBy }),
   });
-  if (!res.ok) { const err = await res.json(); throw new Error(err.detail || "Update failed"); }
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Update failed");
+  }
   return res.json();
 }
 
 async function confirmItem(itemId, updatedBy) {
   const url = `${API_BASE}/api/staff/confirm?item_id=${itemId}&updated_by=${encodeURIComponent(updatedBy)}`;
-  const res = await fetch(url, { method: "POST", headers: { "X-Staff-Pin": getStaffPin() } });
-  if (!res.ok) { const err = await res.json(); throw new Error(err.detail || "Confirm failed"); }
-  return res.json();
-}
-
-async function getAttention(center = 1) {
-  const res = await fetch(`${API_BASE}/api/staff/attention?center=${center}`, {
-    headers: { "X-Staff-Pin": getStaffPin() }
-  });
-  if (!res.ok) { const err = await res.json(); throw new Error(err.detail || "Unauthorized"); }
-  return res.json();
-}
-
-async function getCenters() {
-  const res = await fetch(`${API_BASE}/api/centers`);
-  return res.json();
-}
-
-async function getMedicines() {
-  const res = await fetch(`${API_BASE}/api/medicines`);
+  const res = await fetch(url, { method: "POST" });
   return res.json();
 }

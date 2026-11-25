@@ -1,13 +1,12 @@
-const staffNameInput = document.getElementById("staff-name");
 const attentionBanner = document.getElementById("attention-banner");
 const itemList = document.getElementById("item-list");
+const reportsList = document.getElementById("reports-list");
 
 function getStaffName() {
   return localStorage.getItem("tanaw_staff_name") || "Staff";
 }
 
 async function initStaff() {
-  // 1. Prompt for PIN if unauthorized
   try {
     await getAttention(1);
   } catch (e) {
@@ -15,7 +14,7 @@ async function initStaff() {
       const pin = prompt("Enter Staff PIN:");
       if (pin) {
         localStorage.setItem("tanaw_staff_pin", pin);
-        window.location.reload(); // Reload with new PIN
+        window.location.reload();
       } else {
         alert("PIN is required to access the staff dashboard.");
       }
@@ -23,13 +22,33 @@ async function initStaff() {
     }
   }
 
-  // 2. Load items
   try {
     const items = await getItems(1);
     renderItems(items);
     checkAttention();
+    loadReports();
   } catch (err) {
     itemList.innerHTML = `<p style="color:red">Failed to load items: ${err.message}</p>`;
+  }
+}
+
+async function loadReports() {
+  try {
+    const reports = await getReports();
+    if (reports.length === 0) {
+      reportsList.innerHTML = `<p style="color: #666; font-size: 0.9rem;">Wala pay reports gikan sa mga residente.</p>`;
+      return;
+    }
+    
+    reportsList.innerHTML = reports.map(r => `
+      <div class="report-card">
+        <div class="report-header">${r.report_type.toUpperCase()}</div>
+        <div>${r.details}</div>
+        <div class="report-time">${r.submitted_at}</div>
+      </div>
+    `).join("");
+  } catch (e) {
+    reportsList.innerHTML = `<p style="color:red;">Failed to load reports.</p>`;
   }
 }
 
@@ -42,9 +61,7 @@ async function checkAttention() {
     } else {
       attentionBanner.style.display = "none";
     }
-  } catch (e) {
-    // Ignore if PIN is wrong, handled in initStaff
-  }
+  } catch (e) {}
 }
 
 function renderItems(items) {
@@ -53,7 +70,6 @@ function renderItems(items) {
     const div = document.createElement("div");
     div.className = "staff-item";
     
-    // Status Color Map
     const statusClass = item.status_key || "no_record";
     const statusLabel = item.availability;
 
@@ -66,7 +82,7 @@ function renderItems(items) {
         <button onclick="doUpdate(${item.item_id}, 'in_stock')">In Stock</button>
         <button onclick="doUpdate(${item.item_id}, 'low_stock')">Low</button>
         <button onclick="doUpdate(${item.item_id}, 'out_of_stock')">Out</button>
-        <button onclick="doConfirm(${item.item_id})">Kumpirmahi</button>
+        <button class="confirm" onclick="doConfirm(${item.item_id})">Kumpirmahi</button>
       </div>
     `;
     itemList.appendChild(div);
@@ -78,7 +94,7 @@ async function doUpdate(itemId, status) {
   try {
     await updateStatus(itemId, status, staffName);
     alert("Status updated successfully!");
-    initStaff(); // Refresh list
+    initStaff();
   } catch (err) {
     alert("Failed to update: " + err.message);
   }
@@ -95,5 +111,4 @@ async function doConfirm(itemId) {
   }
 }
 
-// Start
 initStaff();

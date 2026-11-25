@@ -22,7 +22,7 @@ OPEN_KEYWORDS = [
     "unsa oras mo sira", "unsa oras mag-abli", "unsa oras mangsirado",
     "abli pa ba", "nag-operate ba mo", "naka-abli ba mo karon", "dili ba sirado karon",
     "naa mo ron", "naa ba mo karon", "abli na mo", "unsa oras mahuman",
-    "unsay schedule ninyo", "naa moy duty karon", "unsa ka oras", "abli ba mo ugma"
+    "unsay schedule ninyo", "naa moy duty karon", "unsa ka oras", "abli ba mo ugma",
 ]
 
 SERVICES_KEYWORDS = [
@@ -38,16 +38,16 @@ SERVICES_KEYWORDS = [
     "libreng konsultasyon", "serbisyo ng health center", "anong serbisyo",
     "ano ang serbisyo", "paano magpatingin", "magpapatingin", "magpapakonsulta",
     "may doktor ba", "may nars ba", "may midwife ba", "magpapabakuna",
-    "saan pwede magpatingin", "gusto ko magpacheckup", "prenatal checkup",
-    "family planning", "pagpapabakuna", "serbisyong pangkalusugan",
-    "unsa inyong serbisyo", "unsay serbisyo", "unsa nga serbisyo", "naa moy checkup", 
-    "naa moy doktor", "naa moy nurse", "naa moy midwife", "magpakonsulta", 
+    "saan pwede magpatingin", "gusto ko magpacheckup",
+    "pagpabakuna", "serbisyong pangkalusugan",
+    "unsa inyong serbisyo", "unsay serbisyo", "unsa nga serbisyo", "naa moy checkup",
+    "naa moy doktor", "naa moy nurse", "naa moy midwife", "magpakonsulta",
     "magpa checkup", "magpa konsulta", "magpatan-aw", "magpa tambal", "pa checkup",
-    "pagpabakuna", "unsay pwede makuha", "unsa ang inyong serbisyo",
+    "unsay pwede makuha", "unsa ang inyong serbisyo",
     "magpatambal", "magpatinggal", "unsay ma-offer ninyo", "unsa mga serbisyo naa ninyo",
-    "naa bay doctor karon", "naa bay nars", "gusto ko magpacheckup",
+    "naa bay doctor karon", "naa bay nars",
     "asa mi magpacheckup", "unsa inyong programa", "naa bay prenatal",
-    "naa bay family planning", "naa bay bakunahan", "naa moy dental", "naa moy laboratory"
+    "naa bay family planning", "naa bay bakunahan", "naa moy dental", "naa moy laboratory",
 ]
 
 MEDICINE_WORDS = [
@@ -59,7 +59,7 @@ MEDICINE_WORDS = [
     "gamot", "mga gamot", "medisina", "may gamot", "meron bang gamot",
     "may available", "may stock", "mayroon pa ba", "anong gamot",
     "anong mga gamot", "gamot ninyo", "libreng gamot", "libreng medisina",
-    "may bakuna", "may available na bakuna", "may paracetamol ba", 
+    "may bakuna", "may available na bakuna", "may paracetamol ba",
     "may amoxicillin ba", "may antibiotics ba", "wala bang gamot",
     "naa moy tambal", "naa bay tambal", "naa pa bay tambal", "naa pa moy tambal",
     "naa moy medisina", "naa moy stock", "naay tambal", "naay medisina",
@@ -77,13 +77,15 @@ MEDICINE_WORDS = [
     "ferrous sulfate", "vitamin c", "multivitamins", "oral rehydration salts",
     "ors", "biogesic", "neozep", "bioflu", "alaxan", "medicol", "tempra",
     "mefenamic", "diatabs", "kremil s", "solmux", "tuseran", "ventolin",
-    "ascorbic acid", "ferrous", "amlodipine", "metoprolol"
+    "ascorbic acid", "ferrous", "amlodipine", "metoprolol",
 ]
+
 
 def normalize(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     return re.sub(r"\s+", " ", text)
+
 
 def find_item(text: str, center_id: int):
     conn = get_connection()
@@ -98,48 +100,50 @@ def find_item(text: str, center_id: int):
     ).fetchall()
     conn.close()
 
-    clean_text = normalize(text)
-    words = clean_text.split()
-    
+    words = normalize(text).split()
+
     candidates = []
-    name_map = {} 
-    
+    name_map = {}
+
     for row in rows:
-        full_name = row["name"]
-        candidates.append(normalize(full_name))
-        name_map[normalize(full_name)] = full_name
-        
+        full_name = normalize(row["name"])
+        candidates.append(full_name)
+        name_map[full_name] = row["name"]
+
         if row["alias"]:
-            alias_clean = normalize(row["alias"])
-            candidates.append(alias_clean)
-            name_map[alias_clean] = full_name
+            alias = normalize(row["alias"])
+            candidates.append(alias)
+            name_map[alias] = row["name"]
 
     for word in words:
-        if word in candidates:
+        if word in name_map:
             return name_map[word]
 
     for word in words:
         if len(word) < 3:
             continue
-        match, score, _ = process.extractOne(word, candidates, scorer=fuzz.ratio)
-        if score >= 80:
-            return name_map[match]
+        match = process.extractOne(word, candidates, scorer=fuzz.ratio)
+        if match and match[1] >= 80:
+            return name_map[match[0]]
 
     return None
+
 
 def detect_intent(text: str, center_id: int = 1) -> dict:
     clean = normalize(text)
     words = set(clean.split())
 
-    item = find_item(clean, center_id)
-    if item:
-        return {"intent": "stock", "item": item, "center": center_id}
-
+    # Hours and services first, so words like "available" in "available services"
+    # are not read as a stock question
     if any(k in clean for k in OPEN_KEYWORDS):
         return {"intent": "open_now", "center": center_id}
 
     if any(k in clean for k in SERVICES_KEYWORDS):
         return {"intent": "services", "center": center_id}
+
+    item = find_item(clean, center_id)
+    if item:
+        return {"intent": "stock", "item": item, "center": center_id}
 
     if any(k in clean for k in MEDICINE_WORDS):
         return {"intent": "list_items", "center": center_id}
@@ -147,10 +151,10 @@ def detect_intent(text: str, center_id: int = 1) -> dict:
     if any(k in words for k in ["hello", "hi", "maayong", "adlaw", "kumusta", "musta", "kamusta"]):
         return {"intent": "greeting"}
 
-    if any(k in words for k in ["salamat", "salamat", "thank", "thanks", "lamat"]):
+    if any(k in words for k in ["salamat", "thank", "thanks", "lamat"]):
         return {"intent": "thanks"}
 
-    if any(k in words for k in ["tambal sa", "unsay tambal sa", "sakit", "ubo", "hilanat", "sip-on", "lawas"]):
+    if any(k in words for k in ["sakit", "ubo", "hilanat", "sip-on", "lawas"]):
         return {"intent": "medical_advice"}
 
     return {"intent": "unknown"}

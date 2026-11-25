@@ -1,12 +1,9 @@
 import math
 from datetime import datetime, timezone, timedelta
-
 from database import get_connection
 from freshness import freshness_state
 
-# Approximate Tandag City center. Used when no GPS location is sent.
 TANDAG_CENTER = (9.0785, 126.1980)
-
 PH_TZ = timezone(timedelta(hours=8))
 
 STATUS_LABELS = {
@@ -14,7 +11,6 @@ STATUS_LABELS = {
     "low_stock": "Low Stock",
     "out_of_stock": "Out of Stock",
 }
-
 
 def haversine_km(lat1, lon1, lat2, lon2):
     r = 6371.0
@@ -24,11 +20,9 @@ def haversine_km(lat1, lon1, lat2, lon2):
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
 
-
 def _ph_time(utc_str):
     dt = datetime.fromisoformat(utc_str).replace(tzinfo=timezone.utc)
     return dt.astimezone(PH_TZ).strftime("%b %d, %Y %I:%M %p")
-
 
 def find_nearby(item_name, lat, lng):
     conn = get_connection()
@@ -58,9 +52,10 @@ def find_nearby(item_name, lat, lng):
             "address": c["address"],
             "contact": c["contact_number"],
             "distance_km": distance,
+            "lat": c["latitude"],   # ADDED FOR MAP
+            "lng": c["longitude"],  # ADDED FOR MAP
         }
 
-        # No item asked for: just list the centers by distance
         if item_name is None:
             found.append(base)
             continue
@@ -73,7 +68,7 @@ def find_nearby(item_name, lat, lng):
             (c["id"], item_name),
         ).fetchone()
         if item is None:
-            continue  # this center does not carry the item
+            continue
 
         status = conn.execute(
             """
@@ -108,7 +103,6 @@ def find_nearby(item_name, lat, lng):
 
     conn.close()
 
-    # Centers with stock first, then by distance
     found.sort(key=lambda x: (0 if x.get("in_stock") else 1, x["distance_km"]))
 
     return {

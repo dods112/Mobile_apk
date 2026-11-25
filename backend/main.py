@@ -1,46 +1,76 @@
-import os
+﻿import os
+import hashlib
+from datetime import datetime, timezone, timedelta
+from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime, timezone, timedelta
 
 from database import get_connection
 from freshness import freshness_state
 from intent import detect_intent
 from schedule import open_now, list_services
 from nearby import find_nearby, TANDAG_CENTER
+from referral import build_referral
 from seed_data import reset_and_seed
 
 PH_TZ = timezone(timedelta(hours=8))
 
 NEARBY_WORDS = (
-    "pinakaduol", "pinakaduol nga health center", "duol", "duol nga health center",
-    "duol nga klinika", "duol nga ospital", "duol nga botika", "asa naa", "asa pa",
-    "asa ang", "asa dapit", "asa dapit ang", "asa makita", "asa makit-an",
-    "asa ko makakita", "asa ko moadto", "asa ta moadto", "asa ko makapa checkup",
-    "asa makapalit og tambal", "naa bay duol", "naa bay duol diri", "naa bay health center",
-    "unsa nga lugar", "unsay lokasyon", "lokasyon sa health center", "pila kalayo",
-    "layo ba", "duol ra ba", "direksyon padulong", "unsaon pag-adto", "giunsa pag-adto",
-    "agi padulong", "health center diri", "health center sa amo", "pinakamalapit",
-    "pinakamalapit na health center", "malapit", "malapit na klinika", "malapit na ospital",
-    "malapit na botika", "saan ang", "saan banda", "saan matatagpuan", "saan makikita",
-    "nasaan ang", "may malapit ba", "may malapit dito", "health center dito",
-    "lokasyon ng health center", "address ng health center", "direksyon papunta",
-    "paano pumunta", "gaano kalayo", "malapit lang ba", "saan makakabili ng gamot",
-    "nearest", "nearby", "near me", "closest", "closest to me", "near here",
-    "nearby health center", "nearest health center", "nearest clinic", "nearest hospital",
-    "nearest pharmacy", "health center location", "clinic location", "hospital location",
-    "pharmacy location", "where is", "where can i find", "where can i go", "where to find",
-    "where is located", "directions to", "how to get to", "how far", "distance to",
-    "show me nearby", "find health center", "find a clinic", "health centers around me",
-    "clinics around me", "center", "centro", "health center", "health centre", "clinic",
-    "hospital", "pharmacy", "botika", "dispensary", "health facility", "medical facility"
+    "pinakaduol", "duol", "asa naa", "asa pa", "asa ang", "asa dapit",
+    "nearest", "nearby", "near me", "find health center",
 )
 
-def to_ph_time(utc_str: str) -> str:
+STATUS_LABELS = {
+    "in_stock": "Available",
+    "low_stock": "Low Stock",
+    "out_of_stock": "Out of Stock",
+}
+
+TEXT = {
+    "en": {
+        "greeting": "Good day! Welcome to Tan-aw AI.",
+        "thanks": "You're welcome! Take care.",
+        "medical": "Sorry, I cannot give medical advice. Please ask a doctor.",
+        "services_none": "No services are listed yet.",
+        "services_prefix": "Services at",
+        "items_none": "No medicines or vaccines are listed at this center.",
+        "no_center": "I could not find that health center.",
+        "unknown": "Sorry, I did not understand. Ask about medicine, vaccines, opening hours, or the nearest center.",
+        "stale_warning": "This information may be outdated.",
+        "no_record": "No reliable record for this item at this health center. This does not mean it is out of stock.",
+    },
+    "ceb": {
+        "greeting": "Maayong adlaw! Welcome sa Tan-aw AI.",
+        "thanks": "Walay sapayan! Amping kanunay.",
+        "medical": "Pasensya, dili ko makahatag og medikal nga tambag. Palihug konsulta sa doktor.",
+        "services_none": "Wala pay natala nga serbisyo.",
+        "services_prefix": "Mga serbisyo sa",
+        "items_none": "Walay tambal o bakuna nga narehistro sa center na.",
+        "no_center": "Wala ko makit-an nga health center.",
+        "unknown": "Pasensya, wala ko kasabot. Pangutana bahin sa tambal, bakuna, oras, o pinakaduol nga center.",
+        "stale_warning": "Mahimong daan na ang impormasyon.",
+        "no_record": "Walay kasaligan nga rekord niini sa health center na. Dili kini nagpasabot nga wala na.",
+    },
+}
+
+
+def tx(lang: str, key: str) -> str:
+    pack = TEXT.get(lang, TEXT["en"])
+    return pack.get(key, TEXT["en"][key])
+
+
+def normalize_lang(lang: Optional[str]) -> str:
+    return "ceb" if lang == "ceb" else "en"
+
+
+def to_ph_time(utc_str: Optional[str]) -> Optional[str]:
+    if not utc_str:
+        return None
     dt = datetime.fromisoformat(utc_str).replace(tzinfo=timezone.utc)
     return dt.astimezone(PH_TZ).strftime("%b %d, %Y %I:%M %p")
+
 
 def verify_staff_pin(x_staff_pin: str = Header(None)):
     expected_pin = os.getenv("STAFF_PIN")
@@ -48,6 +78,7 @@ def verify_staff_pin(x_staff_pin: str = Header(None)):
         return
     if x_staff_pin != expected_pin:
         raise HTTPException(status_code=401, detail="Invalid or missing Staff PIN")
+
 
 app = FastAPI(title="Tan-aw AI")
 
@@ -60,11 +91,6 @@ app.add_middleware(
 
 reset_and_seed()
 
-STATUS_LABELS = {
-    "in_stock": "Available",
-    "low_stock": "Low Stock",
-    "out_of_stock": "Out of Stock",
-}
 
 class StockUpdate(BaseModel):
     item_id: int
@@ -73,14 +99,34 @@ class StockUpdate(BaseModel):
     reason: Optional[str] = None
     expected_restock_date: Optional[str] = None
 
-@app.get("/")
-def root():
-    return {"status": "Tan-aw AI is running"}
 
-@app.get("/api/stock")
-def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
-    conn = get_connection()
-    row = conn.execute(
+class ResidentReport(BaseModel):
+    health_center_id: int
+    report_type: str
+    details: str
+
+
+def _freshness_config(conn):
+    return conn.execute(
+        "SELECT fresh_max_hours, aging_max_hours FROM freshness_config WHERE id = 1"
+    ).fetchone()
+
+
+def _latest_status(conn, item_id: int):
+    return conn.execute(
+        """
+        SELECT status, status_changed_at, last_confirmed_at
+        FROM stock_status
+        WHERE item_id = ?
+        ORDER BY status_changed_at DESC, id DESC
+        LIMIT 1
+        """,
+        (item_id,),
+    ).fetchone()
+
+
+def _find_item_row(conn, center_id: int, query: str):
+    return conn.execute(
         """
         SELECT i.id, i.name
         FROM items i
@@ -90,58 +136,133 @@ def check_stock(item: str = Query(..., min_length=2), center: int = Query(...)):
           AND (LOWER(a.alias) = LOWER(?) OR LOWER(i.name) = LOWER(?))
         LIMIT 1
         """,
-        (center, item, item),
+        (center_id, query, query),
     ).fetchone()
 
-    if row is None:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Item not found at this center")
 
-    status = conn.execute(
+def _global_item(query: str):
+    # Finds the item at any center, so a referral can name the medicine
+    conn = get_connection()
+    row = conn.execute(
         """
-        SELECT status, reason, expected_restock_date, updated_by,
-               status_changed_at, last_confirmed_at
-        FROM stock_status
-        WHERE item_id = ?
-        ORDER BY status_changed_at DESC, id DESC
+        SELECT i.id, i.name
+        FROM items i
+        LEFT JOIN item_aliases a ON a.item_id = i.id
+        WHERE i.is_active = 1
+          AND (LOWER(a.alias) = LOWER(?) OR LOWER(i.name) = LOWER(?))
         LIMIT 1
         """,
-        (row["id"],),
-    ).fetchone()
-
-    config = conn.execute(
-        "SELECT fresh_max_hours, aging_max_hours FROM freshness_config WHERE id = 1"
+        (query, query),
     ).fetchone()
     conn.close()
+    return row
 
+
+def _items_reply(center_id: int, lang: str) -> dict:
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT name, category FROM items WHERE health_center_id = ? AND is_active = 1 ORDER BY category, name",
+        (center_id,),
+    ).fetchall()
+    conn.close()
+
+    if not rows:
+        return {"result": "text", "message": tx(lang, "items_none")}
+
+    medicines = [r["name"] for r in rows if r["category"] != "vaccine"]
+    vaccines = [r["name"] for r in rows if r["category"] == "vaccine"]
+
+    if lang == "ceb":
+        meds_label, vacc_label, intro = "Mga tambal", "Mga bakuna", "Kini ang available sa center:"
+    else:
+        meds_label, vacc_label, intro = "Medicines", "Vaccines", "Here is what this center has:"
+
+    return {
+        "result": "list",
+        "intro": intro,
+        "groups": [
+            {"label": meds_label, "items": medicines},
+            {"label": vacc_label, "items": vaccines},
+        ],
+    }
+
+
+def _services_text(center_id: int, lang: str) -> str:
+    data = list_services(center_id)
+    if "error" in data:
+        return tx(lang, "no_center")
+    if not data["services"]:
+        return tx(lang, "services_none")
+    return f"{tx(lang, 'services_prefix')} {data['center']}: " + ", ".join(data["services"]) + "."
+
+
+@app.get("/")
+def root():
+    return {"status": "Tan-aw AI is running"}
+
+
+@app.get("/api/stock")
+def check_stock(
+    item: str = Query(..., min_length=2),
+    center: int = Query(...),
+    lang: str = Query("en"),
+):
+    lang = normalize_lang(lang)
+    conn = get_connection()
+    row = _find_item_row(conn, center, item)
+
+    # Not carried at this center: refer to a center that has it
+    if row is None:
+        conn.close()
+        other = _global_item(item)
+        if other is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return {
+            "item": other["name"],
+            "result": "not_carried",
+            "referral": build_referral(other["name"], other["id"], center, lang),
+        }
+
+    status = _latest_status(conn, row["id"])
+    config = _freshness_config(conn)
+    conn.close()
+
+    # No current record here: refer if another center has it
     if status is None:
         return {
             "item": row["name"],
             "result": "no_current_record",
-            "message": "Walay kasaligan nga rekord niini sa health center na. Dili nagpasabot nga wala kini.",
+            "message": tx(lang, "no_record"),
+            "referral": build_referral(row["name"], row["id"], center, lang),
         }
 
-    freshness = freshness_state(
+    f = freshness_state(
         status["last_confirmed_at"],
         config["fresh_max_hours"],
         config["aging_max_hours"],
     )
 
-    return {
+    result = {
         "item": row["name"],
         "availability": STATUS_LABELS[status["status"]],
         "status_changed_at": to_ph_time(status["status_changed_at"]),
         "last_confirmed_at": to_ph_time(status["last_confirmed_at"]),
-        "freshness": freshness["state"],
-        "hours_since_confirmed": freshness["hours_since_confirmed"],
-        "warning": (
-            "Mahimong daan na ang impormasyon." if freshness["state"] == "stale" else None
-        ),
+        "freshness": f["state"],
+        "hours_since_confirmed": f["hours_since_confirmed"],
+        "warning": tx(lang, "stale_warning") if f["state"] == "stale" else None,
     }
+
+    # Out of stock here: refer if another center has it
+    if status["status"] == "out_of_stock":
+        result["referral"] = build_referral(row["name"], row["id"], center, lang)
+
+    return result
+
 
 @app.get("/api/open-now")
 def check_open_now(center: int = Query(...)):
     return open_now(center)
+
 
 @app.get("/api/nearby")
 def nearby(
@@ -153,86 +274,157 @@ def nearby(
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
     return find_nearby(item, user_lat, user_lng)
 
+
 @app.get("/api/chat")
 def chat(
     message: str = Query(..., min_length=2),
     center: int = Query(1),
+    lang: str = Query("en"),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
 ):
-    lowered = message.lower()
-    wants_nearby = any(word in lowered for word in NEARBY_WORDS)
+    lang = normalize_lang(lang)
     result = detect_intent(message, center)
+    intent = result["intent"]
     user_lat = lat if lat is not None else TANDAG_CENTER[0]
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
+    wants_nearby = any(word in message.lower() for word in NEARBY_WORDS)
 
-    if result["intent"] == "greeting":
-        return {"result": "text", "message": "Maayong adlaw! Welcome sa Tan-aw AI. Unsa akong ikatabang nimo karon?"}
-    if result["intent"] == "thanks":
-        return {"result": "text", "message": "Walay sapayan! Amping kanunay ug hinaot nga maayo imong panglawas!"}
-    if result["intent"] == "medical_advice":
-        return {"result": "text", "message": "Pasensya, ako usa lamang ka information assistant ug dili makahatag og medikal nga tambag o reseta. Palihug konsulta sa doktor o nurse sa health center para sa imong kahimtang."}
-
-    if result["intent"] == "open_now":
+    if intent == "greeting":
+        return {"result": "text", "message": tx(lang, "greeting")}
+    if intent == "thanks":
+        return {"result": "text", "message": tx(lang, "thanks")}
+    if intent == "medical_advice":
+        return {"result": "text", "message": tx(lang, "medical")}
+    if intent == "open_now":
         return open_now(center)
-
-    if result["intent"] == "services":
-        return list_services(center)
-        
-    if result["intent"] == "list_items":
-        items_data = list_items(center)
-        return {
-            "result": "list_items",
-            "items": items_data,
-            "message": "Kini ang mga tambal nga naa sa among listahan karon:"
-        }
-
-    if wants_nearby and result["intent"] == "stock":
-        return find_nearby(result["item"], user_lat, user_lng)
-
+    if intent == "services":
+        return {"result": "text", "message": _services_text(center, lang)}
+    if intent == "list_items":
+        return _items_reply(center, lang)
     if wants_nearby:
-        return find_nearby(None, user_lat, user_lng)
+        return find_nearby(result.get("item"), user_lat, user_lng)
+    if intent == "stock":
+        return check_stock(item=result["item"], center=center, lang=lang)
 
-    if result["intent"] == "stock":
-        return check_stock(item=result["item"], center=center)
+    return {"result": "unknown", "message": tx(lang, "unknown")}
 
-    return {"result": "unknown", "message": "Pasensya, wala ko kasabot. Pangutana bahin sa tambal, bakuna, o kung bukas ba ang center."}
 
 @app.get("/api/centers")
 def get_centers():
     conn = get_connection()
-    rows = conn.execute("SELECT id, name, barangay, address, contact_number, latitude, longitude FROM health_centers ORDER BY name").fetchall()
+    rows = conn.execute("SELECT * FROM health_centers ORDER BY name").fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# NEW (Phase 1): full profile for one health center
+@app.get("/api/centers/{center_id}/profile")
+def center_profile(center_id: int):
+    conn = get_connection()
+    center = conn.execute(
+        """
+        SELECT id, name, barangay, contact_number, address, latitude, longitude
+        FROM health_centers WHERE id = ?
+        """,
+        (center_id,),
+    ).fetchone()
+    if center is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Health center not found")
+
+    hours = conn.execute(
+        """
+        SELECT day_of_week, start_time, end_time, service_name
+        FROM clinic_schedule
+        WHERE health_center_id = ? AND is_cancelled = 0
+        ORDER BY day_of_week, start_time
+        """,
+        (center_id,),
+    ).fetchall()
+
+    services = conn.execute(
+        """
+        SELECT DISTINCT service_name FROM clinic_schedule
+        WHERE health_center_id = ? AND is_cancelled = 0
+        """,
+        (center_id,),
+    ).fetchall()
+
+    items = conn.execute(
+        """
+        SELECT i.name, i.category, s.status, s.last_confirmed_at
+        FROM items i
+        LEFT JOIN stock_status s ON s.id = (
+            SELECT id FROM stock_status WHERE item_id = i.id
+            ORDER BY status_changed_at DESC, id DESC LIMIT 1
+        )
+        WHERE i.health_center_id = ? AND i.is_active = 1
+        ORDER BY i.category, i.name
+        """,
+        (center_id,),
+    ).fetchall()
+    conn.close()
+
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    schedule = [
+        {
+            "day": day_names[h["day_of_week"]],
+            "start": h["start_time"],
+            "end": h["end_time"],
+            "service": h["service_name"],
+        }
+        for h in hours
+    ]
+
+    inventory = [
+        {
+            "name": r["name"],
+            "category": r["category"],
+            "availability": STATUS_LABELS.get(r["status"], "No Current Record"),
+            "last_confirmed_at": to_ph_time(r["last_confirmed_at"]),
+        }
+        for r in items
+    ]
+
+    confirmed_values = [r["last_confirmed_at"] for r in items if r["last_confirmed_at"]]
+    last_confirmed = max(confirmed_values) if confirmed_values else None
+
+    return {
+        "id": center["id"],
+        "name": center["name"],
+        "barangay": center["barangay"],
+        "address": center["address"],
+        "contact": center["contact_number"],
+        "lat": center["latitude"],
+        "lng": center["longitude"],
+        "schedule": schedule,
+        "services": [s["service_name"] for s in services],
+        "inventory": inventory,
+        "last_confirmed": to_ph_time(last_confirmed),
+    }
+
 
 @app.get("/api/medicines")
 def list_medicines():
     conn = get_connection()
     rows = conn.execute(
-        """
-        SELECT name, category, description, MAX(id) as id 
-        FROM items 
-        WHERE is_active = 1
-        GROUP BY name, category, description
-        ORDER BY name
-        """
+        "SELECT name, category, description, MAX(id) AS id FROM items WHERE is_active = 1 GROUP BY name ORDER BY name"
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
+
 @app.get("/api/items")
-def list_items(center: int = Query(...)):
+def items_for_center(center: int = Query(...)):
     conn = get_connection()
     rows = conn.execute(
         """
-        SELECT i.id, i.name, i.category,
-               s.status, s.last_confirmed_at, s.updated_by
+        SELECT i.id AS item_id, i.name, i.category, s.status, s.last_confirmed_at, s.updated_by
         FROM items i
         LEFT JOIN stock_status s ON s.id = (
-            SELECT id FROM stock_status
-            WHERE item_id = i.id
-            ORDER BY status_changed_at DESC, id DESC
-            LIMIT 1
+            SELECT id FROM stock_status WHERE item_id = i.id
+            ORDER BY status_changed_at DESC, id DESC LIMIT 1
         )
         WHERE i.health_center_id = ? AND i.is_active = 1
         ORDER BY i.name
@@ -243,16 +435,37 @@ def list_items(center: int = Query(...)):
 
     return [
         {
-            "item_id": r["id"],
+            "item_id": r["item_id"],
             "name": r["name"],
             "category": r["category"],
             "status_key": r["status"],
             "availability": STATUS_LABELS.get(r["status"], "No Current Record"),
-            "last_confirmed_at": to_ph_time(r["last_confirmed_at"]) if r["last_confirmed_at"] else None,
+            "last_confirmed_at": to_ph_time(r["last_confirmed_at"]),
             "updated_by": r["updated_by"],
         }
         for r in rows
     ]
+
+
+@app.post("/api/report")
+def submit_report(data: ResidentReport):
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO resident_reports (health_center_id, report_type, details) VALUES (?, ?, ?)",
+        (data.health_center_id, data.report_type, data.details),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "message": "Salamat! Na-record na ang imong report."}
+
+
+@app.get("/api/staff/reports", dependencies=[Depends(verify_staff_pin)])
+def get_reports():
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM resident_reports ORDER BY submitted_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 
 @app.post("/api/staff/update", dependencies=[Depends(verify_staff_pin)])
 def update_stock(data: StockUpdate):
@@ -268,7 +481,10 @@ def update_stock(data: StockUpdate):
         raise HTTPException(status_code=404, detail="Item not found")
 
     conn.execute(
-        "INSERT INTO stock_status (item_id, status, reason, expected_restock_date, updated_by) VALUES (?, ?, ?, ?, ?)",
+        """
+        INSERT INTO stock_status (item_id, status, reason, expected_restock_date, updated_by)
+        VALUES (?, ?, ?, ?, ?)
+        """,
         (data.item_id, data.status, data.reason, data.expected_restock_date, data.updated_by),
     )
     conn.execute(
@@ -279,25 +495,36 @@ def update_stock(data: StockUpdate):
     conn.close()
     return {"ok": True, "item": item["name"], "status": STATUS_LABELS[data.status]}
 
+
 @app.post("/api/staff/confirm", dependencies=[Depends(verify_staff_pin)])
 def confirm_stock(item_id: int = Query(...), updated_by: str = Query(...)):
     conn = get_connection()
+    item = conn.execute(
+        "SELECT health_center_id, name FROM items WHERE id = ?", (item_id,)
+    ).fetchone()
+    if item is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Item not found")
+
     conn.execute(
         """
         UPDATE stock_status
         SET last_confirmed_at = CURRENT_TIMESTAMP, updated_by = ?
         WHERE id = (
-            SELECT id FROM stock_status
-            WHERE item_id = ?
-            ORDER BY status_changed_at DESC, id DESC
-            LIMIT 1
+            SELECT id FROM stock_status WHERE item_id = ?
+            ORDER BY status_changed_at DESC, id DESC LIMIT 1
         )
         """,
         (updated_by, item_id),
     )
+    conn.execute(
+        "INSERT INTO update_log (health_center_id, staff_name, action) VALUES (?, ?, ?)",
+        (item["health_center_id"], updated_by, f"{item['name']}: confirmed"),
+    )
     conn.commit()
     conn.close()
     return {"ok": True}
+
 
 @app.get("/api/staff/attention", dependencies=[Depends(verify_staff_pin)])
 def needs_attention(center: int = Query(...)):
@@ -307,16 +534,14 @@ def needs_attention(center: int = Query(...)):
         SELECT i.name, s.last_confirmed_at
         FROM items i
         LEFT JOIN stock_status s ON s.id = (
-            SELECT id FROM stock_status
-            WHERE item_id = i.id
-            ORDER BY status_changed_at DESC, id DESC
-            LIMIT 1
+            SELECT id FROM stock_status WHERE item_id = i.id
+            ORDER BY status_changed_at DESC, id DESC LIMIT 1
         )
         WHERE i.health_center_id = ? AND i.is_active = 1
         """,
         (center,),
     ).fetchall()
-    config = conn.execute("SELECT fresh_max_hours, aging_max_hours FROM freshness_config WHERE id = 1").fetchone()
+    config = _freshness_config(conn)
     conn.close()
 
     flagged = []
@@ -324,7 +549,16 @@ def needs_attention(center: int = Query(...)):
         if r["last_confirmed_at"] is None:
             flagged.append({"name": r["name"], "reason": "no_record"})
             continue
-        f = freshness_state(r["last_confirmed_at"], config["fresh_max_hours"], config["aging_max_hours"])
+        f = freshness_state(
+            r["last_confirmed_at"],
+            config["fresh_max_hours"],
+            config["aging_max_hours"],
+        )
         if f["state"] != "fresh":
-            flagged.append({"name": r["name"], "reason": f["state"], "hours_since_confirmed": f["hours_since_confirmed"]})
+            flagged.append({
+                "name": r["name"],
+                "reason": f["state"],
+                "hours_since_confirmed": f["hours_since_confirmed"],
+            })
+
     return {"count": len(flagged), "items": flagged}

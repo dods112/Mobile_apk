@@ -1,73 +1,44 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ceb">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#087F75">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Medicine Guide - Tan-aw AI</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23087F75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z'/%3E%3Cpath d='M9 11l2 2 4-4'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <style>
-    .med-card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      border-left: 5px solid #12B8A6;
-    }
-    .med-card h3 { margin-bottom: 6px; color: #087F75; font-size: 1.1rem; }
-    .med-card .category { font-size: 0.8em; background: #e0f2f1; color: #087F75; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
-    .med-card p { margin-bottom: 4px; font-size: 0.95em; color: #444; }
-    .back-btn {
-      color: white; text-decoration: none; font-size: 1.5rem; margin-right: 12px; font-weight: bold;
-    }
+    body { padding: 24px; overflow-y: auto; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .back-btn { display: inline-block; margin-bottom: 24px; text-decoration: none; color: var(--primary); font-weight: bold; }
+    .med-card { background: var(--surface); padding: 20px; border-radius: 12px; margin-bottom: 16px; box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
+    .med-card .category { font-size: 0.8rem; background: var(--light-green); color: var(--primary); padding: 4px 8px; border-radius: 10px; display: inline-block; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
+    .med-card h3 { color: var(--text-main); margin-bottom: 8px; font-size: 1.1rem; }
+    .med-card p { color: var(--text-muted); font-size: 0.95rem; }
   </style>
 </head>
-<body style="background: #F0F8F6;">
-
-  <header class="topbar">
-    <div class="brand">
-      <a href="index.html" class="back-btn" aria-label="Back to chat">&larr;</a>
-      <div class="brand-text">
-        <h1>Medicine Guide</h1>
-        <p>Giya sa mga Tambal ug Bakuna</p>
-      </div>
-    </div>
-  </header>
-
-  <main id="med-list" style="padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 40px;">
-    <p style="text-align:center; color:#666;">Nag-load sa mga tambal...</p>
-  </main>
-
+<body>
+  <div class="container">
+    <a href="index.html" class="back-btn">&larr; Back to Chat</a>
+    <h1 style="color: var(--primary); margin-bottom: 8px;">Medicine Guide</h1>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">Giya sa mga Tambal ug Bakuna</p>
+    <div id="med-list"><p>Loading...</p></div>
+  </div>
   <script src="js/api.js"></script>
   <script>
     async function loadMedicines() {
       const list = document.getElementById("med-list");
       try {
         const meds = await getMedicines();
-        list.innerHTML = ""; // Clear loading text
-
-        meds.forEach(m => {
-          const card = document.createElement("div");
-          card.className = "med-card";
-          
-          const desc = m.description || "Walay deskripsyon.";
-          const cat = m.category || "medicine";
-
-          card.innerHTML = `
-            <span class="category">${cat}</span>
+        list.innerHTML = meds.map(m => `
+          <div class="med-card">
+            <span class="category">${m.category || 'medicine'}</span>
             <h3>${m.name}</h3>
-            <p>${desc}</p>
-          `;
-          list.appendChild(card);
-        });
-
+            <p>${m.description || 'Walay deskripsyon.'}</p>
+          </div>
+        `).join("");
       } catch (err) {
-        list.innerHTML = `<p style="color:red; text-align:center;">Failed to load medicines. Check connection.</p>`;
+        list.innerHTML = `<p style="color:red;">Failed to load medicines. Make sure backend is running.</p>`;
       }
     }
-
     loadMedicines();
   </script>
 </body>
