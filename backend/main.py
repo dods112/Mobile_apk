@@ -14,6 +14,8 @@ from schedule import open_now, list_services
 from nearby import find_nearby, TANDAG_CENTER
 from referral import build_referral
 from seed_data import reset_and_seed
+from auth import router as auth_router, ensure_auth_tables, seed_admin, check_staff_access
+from staff_reports import router as staff_router
 
 PH_TZ = timezone(timedelta(hours=8))
 
@@ -72,12 +74,9 @@ def to_ph_time(utc_str: Optional[str]) -> Optional[str]:
     return dt.astimezone(PH_TZ).strftime("%b %d, %Y %I:%M %p")
 
 
-def verify_staff_pin(x_staff_pin: str = Header(None)):
-    expected_pin = os.getenv("STAFF_PIN")
-    if not expected_pin:
-        return
-    if x_staff_pin != expected_pin:
-        raise HTTPException(status_code=401, detail="Invalid or missing Staff PIN")
+def verify_staff_pin(x_staff_pin: str = Header(None), x_auth_token: str = Header(None)):
+    # Staff must be signed in, or give the backup PIN
+    check_staff_access(x_auth_token, x_staff_pin)
 
 
 app = FastAPI(title="Tan-aw AI")
@@ -90,6 +89,10 @@ app.add_middleware(
 )
 
 reset_and_seed()
+ensure_auth_tables()
+seed_admin()
+app.include_router(auth_router)
+app.include_router(staff_router)
 
 
 class StockUpdate(BaseModel):

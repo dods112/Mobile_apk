@@ -1,114 +1,131 @@
-const attentionBanner = document.getElementById("attention-banner");
-const itemList = document.getElementById("item-list");
-const reportsList = document.getElementById("reports-list");
+const itemsEl = document.getElementById("items");
+const attentionEl = document.getElementById("attention");
+const warningEl = document.getElementById("warning");
+const staffUserEl = document.getElementById("staff-user");
 
-function getStaffName() {
-  return localStorage.getItem("tanaw_staff_name") || "Staff";
+const STAFF_CENTER = 1;
+const STATUSES = [
+  { key: "in_stock", label: "In Stock" },
+  { key: "low_stock", label: "Low" },
+  { key: "out_of_stock", label: "Out" },
+];
+
+function signedInName() {
+  const u = window.TANAW_USER || {};
+  return u.full_name || u.username || "Staff";
 }
 
-async function initStaff() {
-  try {
-    await getAttention(1);
-  } catch (e) {
-    if (e.message.includes("PIN") || e.message.includes("Unauthorized")) {
-      const pin = prompt("Enter Staff PIN:");
-      if (pin) {
-        localStorage.setItem("tanaw_staff_pin", pin);
-        window.location.reload();
-      } else {
-        alert("PIN is required to access the staff dashboard.");
-      }
-      return;
-    }
+function isAuthError(err) {
+  return String(err && err.message).includes("401");
+}
+
+function handleError(err, fallback) {
+  if (isAuthError(err)) {
+    location.replace("login.html");
+    return;
   }
-
-  try {
-    const items = await getItems(1);
-    renderItems(items);
-    checkAttention();
-    loadReports();
-  } catch (err) {
-    itemList.innerHTML = `<p style="color:red">Failed to load items: ${err.message}</p>`;
-  }
+  setMessage(fallback, true);
 }
 
-async function loadReports() {
-  try {
-    const reports = await getReports();
-    if (reports.length === 0) {
-      reportsList.innerHTML = `<p style="color: #666; font-size: 0.9rem;">Wala pay reports gikan sa mga residente.</p>`;
-      return;
-    }
-    
-    reportsList.innerHTML = reports.map(r => `
-      <div class="report-card">
-        <div class="report-header">${r.report_type.toUpperCase()}</div>
-        <div>${r.details}</div>
-        <div class="report-time">${r.submitted_at}</div>
-      </div>
-    `).join("");
-  } catch (e) {
-    reportsList.innerHTML = `<p style="color:red;">Failed to load reports.</p>`;
-  }
+function setMessage(text, isError = false) {
+  const note = document.createElement("div");
+  note.className = `notice ${isError ? "stale" : "aging"}`;
+  note.textContent = text;
+  warningEl.replaceChildren(note);
+  setTimeout(() => note.remove(), 3500);
 }
 
-async function checkAttention() {
-  try {
-    const data = await getAttention(1);
-    if (data.count > 0) {
-      attentionBanner.style.display = "block";
-      attentionBanner.textContent = `⚠️ ${data.count} ka item ang nanginahanglan og update (aging/stale).`;
-    } else {
-      attentionBanner.style.display = "none";
-    }
-  } catch (e) {}
-}
+function renderItem(item) {
+  const card = document.createElement("div");
+  card.className = "item-card";
 
-function renderItems(items) {
-  itemList.innerHTML = "";
-  items.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "staff-item";
-    
-    const statusClass = item.status_key || "no_record";
-    const statusLabel = item.availability;
+  const top = document.createElement("div");
+  top.className = "item-top";
+  const title = document.createElement("h3");
+  title.textContent = item.name;
+  const badge = document.createElement("span");
+  badge.className = `badge-status ${item.status_key || "none"}`;
+  badge.textContent = item.availability;
+  top.append(title, badge);
 
-    div.innerHTML = `
-      <div class="staff-item-header">
-        <strong>${item.name}</strong>
-        <span class="badge ${statusClass}">${statusLabel}</span>
-      </div>
-      <div class="staff-actions">
-        <button onclick="doUpdate(${item.item_id}, 'in_stock')">In Stock</button>
-        <button onclick="doUpdate(${item.item_id}, 'low_stock')">Low</button>
-        <button onclick="doUpdate(${item.item_id}, 'out_of_stock')">Out</button>
-        <button class="confirm" onclick="doConfirm(${item.item_id})">Kumpirmahi</button>
-      </div>
-    `;
-    itemList.appendChild(div);
+  const meta = document.createElement("div");
+  meta.className = "item-meta";
+  meta.textContent = item.last_confirmed_at
+    ? `Last confirmed: ${item.last_confirmed_at}`
+    : "No confirmation yet";
+
+  const buttons = document.createElement("div");
+  buttons.className = "status-buttons";
+
+  STATUSES.forEach(s => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = s.label;
+    if (s.key === item.status_key) btn.classList.add("active");
+    btn.addEventListener("click", () => changeStatus(item.item_id, s.key));
+    buttons.appendChild(btn);
   });
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.className = "confirm";
+  confirmBtn.textContent = "Kumpirmahi";
+  confirmBtn.addEventListener("click", () => confirmStock(item.item_id));
+  buttons.appendChild(confirmBtn);
+
+  card.append(top, meta, buttons);
+  return card;
 }
 
-async function doUpdate(itemId, status) {
-  const staffName = getStaffName();
+function renderAttention(data) {
+  if (!data.count) {
+    attentionEl.replaceChildren();
+    return;
+  }
+  const names = data.items.map(i => i.name).join(", ");
+  const note = document.createElement("div");
+  note.className = "notice stale";
+  note.textContent = `${data.count} ka rekord ang kinahanglan kumpirmahon: ${names}`;
+  attentionEl.replaceChildren(note);
+}
+
+async function loadItems() {
   try {
-    await updateStatus(itemId, status, staffName);
-    alert("Status updated successfully!");
-    initStaff();
+    const [items, attention] = await Promise.all([
+      getItems(STAFF_CENTER),
+      getAttention(STAFF_CENTER),
+    ]);
+    itemsEl.replaceChildren(...items.map(renderItem));
+    renderAttention(attention);
   } catch (err) {
-    alert("Failed to update: " + err.message);
+    handleError(err, "Dili makakonek sa server.");
   }
 }
 
-async function doConfirm(itemId) {
-  const staffName = getStaffName();
+async function changeStatus(itemId, status) {
   try {
-    await confirmItem(itemId, staffName);
-    alert("Item confirmed!");
-    initStaff();
+    await updateStatus(itemId, status, signedInName());
+    setMessage("Na-update na ang status.");
+    loadItems();
   } catch (err) {
-    alert("Failed to confirm: " + err.message);
+    handleError(err, err.message);
   }
 }
 
-initStaff();
+async function confirmStock(itemId) {
+  try {
+    await confirmItem(itemId, signedInName());
+    setMessage("Nakumpirma na.");
+    loadItems();
+  } catch (err) {
+    handleError(err, err.message);
+  }
+}
+
+function initStaff(event) {
+  const user = (event && event.detail) || window.TANAW_USER || {};
+  staffUserEl.textContent = `${user.full_name || user.username || ""}`;
+  loadItems();
+}
+
+document.addEventListener("tanaw:auth", initStaff);
