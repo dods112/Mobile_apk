@@ -1,8 +1,38 @@
-// Local development. For the online server, use "https://tan-aw-api.onrender.com"
-const API_BASE = "http://127.0.0.1:8000";
+// Tan-aw AI - API helpers
+
+const PROD_API = "https://tan-aw-api-joig.onrender.com";
+const LOCAL_API = "http://127.0.0.1:8000";
+
+// Browser on your own machine (run_all.bat, port 5500) -> local backend.
+// Hosted site and the Capacitor APK -> Render.
+const isLocalBrowser =
+  (location.hostname === "localhost" || location.hostname === "127.0.0.1") &&
+  location.port !== "" &&
+  !window.Capacitor;
+
+const API_BASE = isLocalBrowser ? LOCAL_API : PROD_API;
+
+// Render's free tier sleeps when idle; the first request can take ~60s.
+const API_TIMEOUT_MS = 70000;
+
+async function apiFetch(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    console.error("API request failed:", url, err);
+    if (err && err.name === "AbortError") {
+      throw new Error("The server took too long to respond. Please try again.");
+    }
+    throw new Error("Cannot reach the server. Check your internet connection and try again.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function getJson(url, headers = {}) {
-  const res = await fetch(url, { headers });
+  const res = await apiFetch(url, { headers });
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json();
 }
@@ -48,7 +78,7 @@ async function getReports() {
 
 // Staff only
 async function markReportReviewed(id) {
-  const res = await fetch(`${API_BASE}/api/staff/reports/${id}/review`, {
+  const res = await apiFetch(`${API_BASE}/api/staff/reports/${id}/review`, {
     method: "POST",
     headers: authHeaders(),
   });
@@ -58,7 +88,7 @@ async function markReportReviewed(id) {
 
 // Staff only
 async function updateStatus(itemId, status, updatedBy) {
-  const res = await fetch(`${API_BASE}/api/staff/update`, {
+  const res = await apiFetch(`${API_BASE}/api/staff/update`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ item_id: itemId, status, updated_by: updatedBy }),
@@ -73,7 +103,7 @@ async function updateStatus(itemId, status, updatedBy) {
 // Staff only
 async function confirmItem(itemId, updatedBy) {
   const url = `${API_BASE}/api/staff/confirm?item_id=${itemId}&updated_by=${encodeURIComponent(updatedBy)}`;
-  const res = await fetch(url, { method: "POST", headers: authHeaders() });
+  const res = await apiFetch(url, { method: "POST", headers: authHeaders() });
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json();
 }
