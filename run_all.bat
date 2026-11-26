@@ -27,8 +27,9 @@ if not exist "%BACKEND%\main.py" (
     exit /b 1
 )
 
-if not exist "%FRONTEND%\index.html" (
-    echo [ERROR] frontend\index.html not found.
+if not exist "%FRONTEND%\login.html" (
+    echo [ERROR] frontend\login.html not found.
+    echo Check that the sign-in page is in the frontend folder.
     pause
     exit /b 1
 )
@@ -73,5 +74,16 @@ if "!READY!"=="1" (
     echo [WARNING] The backend did not answer yet. Check the Tan-aw Backend window for errors.
 )
 
-echo Opening the chat in your browser...
+echo Opening the sign-in page in your browser...
 start "" "http://127.0.0.1:5500/login.html"
+
+echo.
+echo Both servers are running in their own windows.
+echo Close those windows to stop Tan-aw AI.
+echo.
+echo Usage:
+echo   run_all.bat          resident mode (no sample centers)
+echo   run_all.bat -sample  test mode (sample centers on)
+echo.
+pause
+endlocal

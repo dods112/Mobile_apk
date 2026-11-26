@@ -1,0 +1,465 @@
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  /* 100dvh keeps the layout inside the visible area when the
+     mobile browser address bar shows or hides */
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-layout,
+.main-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* ---------- Phones: under 768px ---------- */
+@media (max-width: 767px) {
+
+  /* 1. Header: essentials only, nothing clipped */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+    min-width: 0;
+  }
+
+  .brand-mobile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .brand-mobile .brand-text {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .brand-mobile .brand-text h1 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .brand-mobile .brand-text p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: 0;
+  }
+
+  /* Secondary header actions move into the menu */
+  .top-actions .mobile-only,
+  .top-actions #lang-btn,
+  .top-actions #clear-btn,
+  .top-actions #info-btn {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .menu-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 180px;
+    padding: 6px;
+    border-radius: 12px;
+    z-index: 50;
+  }
+
+  .menu-panel.open {
+    display: flex;
+  }
+
+  .menu-panel > button {
+    min-height: 44px;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .menu-label {
+    display: inline;
+  }
+
+  .status {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+
+  .status #status-text {
+    display: none;
+  }
+
+  /* 2. Chat: full width, no horizontal overflow */
+  .chat {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    padding: 12px 12px 8px;
+    gap: 12px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .chat::-webkit-scrollbar {
+    display: none;
+  }
+
+  .row {
+    max-width: 85%;
+    min-width: 0;
+  }
+
+  .row.welcome-row {
+    max-width: 100%;
+  }
+
+  .bubble {
+    max-width: 100%;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    padding: 10px 12px;
+  }
+
+  .stack {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* 3. Cards */
+  .card,
+  .referral-box,
+  .ref-card,
+  .med-card,
+  .map-card,
+  .center-item {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .ref-card,
+  .referral-box {
+    margin-top: 8px;
+  }
+
+  /* Distance stays on the same line as the name */
+  .dist,
+  .distance,
+  .center-distance {
+    white-space: nowrap;
+  }
+
+  /* Phone numbers: tappable, at least 44px tall */
+  a[href^="tel:"],
+  .phone-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Long addresses, URLs, and phone numbers wrap instead of overflowing */
+  .muted,
+  .muted2,
+  .ref-line,
+  .ref-note,
+  .center-item,
+  .card p {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* 4. Quick actions: a compact, scrollable row with snap */
+  .quick {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    padding: 6px 12px 8px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .quick::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-btn {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-width: 96px;
+    min-height: 44px;
+    padding: 6px 10px;
+    gap: 2px;
+    font-size: 0.74rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .quick-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* 5. Input bar: fixed at the bottom, clear of the home indicator */
+  .composer {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+    z-index: 20;
+  }
+
+  .composer input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  /* 6. Tap targets: 44px minimum */
+  .composer .send,
+  .icon-btn,
+  .text-btn,
+  .menu-toggle,
+  .back-btn,
+  .btn,
+  .chip,
+  .copy-btn,
+  .retry-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .composer .send {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  .copy-btn,
+  .retry-btn,
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+  }
+
+  /* 7. Panels and layout wrappers */
+  .panel {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    overflow-x: hidden;
+  }
+
+  .info-panel {
+    margin: 8px 12px 0;
+    padding: 10px 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .map-box,
+  .profile-map {
+    width: 100%;
+    max-width: 100%;
+    height: 180px;
+  }
+}
+
+/* ---------- Desktop: 768px and up (restores the original layout) ---------- */
+@media (min-width: 768px) {
+  .menu-toggle {
+    display: none;
+  }
+
+  .menu-panel {
+    display: flex;
+    position: static;
+    box-shadow: none;
+    padding: 0;
+    min-width: 0;
+    border: none;
+    background: transparent;
+  }
+
+  .top-actions .mobile-only {
+    display: flex;
+  }
+
+  .top-actions #lang-btn,
+  .top-actions #clear-btn,
+  .top-actions #info-btn {
+    display: inline-flex;
+  }
+
+  .menu-label {
+    display: none;
+  }
+
+  .composer {
+    position: static;
+  }
+
+  .quick {
+    display: grid;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .quick-btn {
+    min-width: 0;
+    min-height: 0;
+    flex: initial;
+  }
+}
+
+/* Tan-aw: menu styles (phones only)
+   The light dropdown applies only below 768px. Desktop is not affected. */
+@media (max-width: 767px) {
+  .menu-panel.open {
+    display: flex !important;
+  }
+
+  .menu-panel {
+    background: #FFFFFF;
+    border: 1px solid #DDEBE8;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(13, 110, 99, 0.18);
+    padding: 6px;
+    min-width: 180px;
+  }
+
+  .menu-panel > button {
+    min-height: 44px;
+    width: 100%;
+    justify-content: flex-start;
+    color: #183B3A;
+    background: transparent;
+    border: none;
+  }
+
+  .menu-panel > button:hover,
+  .menu-panel > button:active {
+    background: #F0F8F6;
+  }
+
+  .menu-panel .text-btn {
+    background: #0D6E63;
+    color: #FFFFFF;
+    border-radius: 10px;
+  }
+
+  .menu-panel .icon-btn svg {
+    color: #647A78;
+  }
+}
+
+/* Desktop: keep the header row exactly as it was */
+@media (min-width: 768px) {
+  .menu-panel {
+    display: flex;
+    position: static;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .menu-toggle {
+    display: none;
+  }
+}
+
+/* Tan-aw: center-name highlight v2 */
+.center-name {
+  display: inline;
+  padding: 1px 6px;
+  margin: 0 1px;
+  border-radius: 6px;
+  font-weight: 700;
+  line-height: 1.7;
+  white-space: normal;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Tan-aw: tap fix for the menu
+   Keeps the three-dot button above other layers and lets taps reach it.
+   Phones only. Colors are unchanged. */
+@media (max-width: 767px) {
+  .menu {
+    position: relative;
+    z-index: 60;
+  }
+
+  .menu-toggle {
+    position: relative;
+    z-index: 61;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .menu-panel.open {
+    z-index: 62;
+  }
+}

@@ -11,6 +11,9 @@ const sidebar = document.getElementById("sidebar");
 const sidebarOverlay = document.getElementById("sidebar-overlay");
 const menuBtn = document.getElementById("mobile-menu-btn");
 const panel = document.getElementById("panel");
+const menuWrap = document.getElementById("menu-wrap");
+const menuToggle = document.getElementById("menu-btn");
+const menuPanel = document.getElementById("menu-panel");
 
 const HISTORY_KEY = "tanaw_history";
 const SAVED_KEY = "tanaw_saved_centers";
@@ -135,6 +138,25 @@ function pt(key) {
   return pack[key] || PANEL_TEXT.en[key] || key;
 }
 
+
+function setMenu(open) {
+  if (!menuPanel || !menuToggle) return;
+  menuPanel.classList.toggle("open", open);
+  menuToggle.setAttribute("aria-expanded", String(open));
+}
+
+if (menuToggle) {
+  menuToggle.addEventListener("click", e => {
+    e.stopPropagation();
+    setMenu(!menuPanel.classList.contains("open"));
+  });
+}
+
+// Close the menu when tapping anywhere else
+document.addEventListener("click", e => {
+  if (menuWrap && !menuWrap.contains(e.target)) setMenu(false);
+});
+
 function applyLanguage() {
   document.documentElement.lang = currentLang;
 
@@ -196,34 +218,68 @@ function highlightCenters(text) {
   return html;
 }
 
+// Tan-aw: mobile UI polish v1
+function availClass(label) {
+  if (label === "Available") return "ok";
+  if (label === "Low Stock") return "low";
+  if (label === "Out of Stock") return "out";
+  return "none";
+}
+
 function formatReferral(ref) {
   if (!ref.found) {
-    return `<div class="referral-box referral-none">${esc(ref.note)}</div>`;
+    return `<div class="ref-card ref-none">${esc(ref.note)}</div>`;
   }
-  const distance = ref.distance_km != null
-    ? ` - ${esc(String(ref.distance_km))} ${t("km")}`
+
+  const dist = ref.distance_km != null
+    ? ` · ${esc(String(ref.distance_km))} ${t("km")}`
     : "";
-  const address = ref.to_address ? `<div class="muted">${esc(ref.to_address)}</div>` : "";
-  const contact = ref.to_contact ? `<div class="muted">${t("tel")}: ${esc(ref.to_contact)}</div>` : "";
-  const validLabel = currentLang === "ceb" ? "Valid hangtod" : "Valid until";
-  const codeLabel = "Referral code";
+  const isCeb = currentLang === "ceb";
+  const validLabel = isCeb ? "Valid hangtod" : "Valid until";
+  const copyLabel = isCeb ? "Kopyaha" : "Copy code";
+  const callLabel = isCeb ? "Tawag sa center" : "Call center";
+  const dirLabel = isCeb ? "Tan-awa ang direksyon" : "View directions";
+  const moreLabel = isCeb ? "Dugang nga detalye" : "More details";
+
+  const firstPhone = ref.to_contact ? String(ref.to_contact).split("/")[0] : "";
+  const phoneDigits = firstPhone.replace(/[^\d+]/g, "");
+  const hasPhone = /\d/.test(phoneDigits);
+  const callBtn = hasPhone
+    ? `<a class="ref-act" href="tel:${esc(phoneDigits)}">${esc(callLabel)}</a>`
+    : "";
+
+  const mapQuery = encodeURIComponent(`${ref.to_center} ${ref.to_address || ""}`.trim());
 
   return `
-    <div class="referral-box">
-      <div class="referral-label">${codeLabel}</div>
-      <div class="referral-code">${esc(ref.code)}</div>
-      <div>${esc(ref.note)}</div>
-      <div class="referral-to"><strong>${esc(ref.to_center)}</strong>${distance}</div>
-      ${address}
-      ${contact}
-      <div class="muted">${validLabel}: ${esc(ref.expires)}</div>
+    <div class="ref-card">
+      <div class="ref-label">Referral code</div>
+      <div class="ref-code-row">
+        <span class="ref-code">${esc(ref.code)}</span>
+        <button type="button" class="copy-btn" data-copy="${esc(ref.code)}">${esc(copyLabel)}</button>
+      </div>
+      <div class="ref-center"><strong>${esc(ref.to_center)}</strong>${dist}</div>
+      ${ref.to_address ? `<div class="ref-line">${esc(ref.to_address)}</div>` : ""}
+      <div class="ref-actions">
+        ${callBtn}
+        <a class="ref-act ref-act-outline" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${mapQuery}">${esc(dirLabel)}</a>
+      </div>
+      <details class="ref-more">
+        <summary>${esc(moreLabel)}</summary>
+        <div class="ref-line">${esc(ref.note)}</div>
+        <div class="ref-line">${esc(validLabel)}: ${esc(ref.expires)}</div>
+        ${ref.to_contact ? `<div class="ref-line">${t("tel")}: ${esc(ref.to_contact)}</div>` : ""}
+      </details>
     </div>`;
 }
 
 function formatStock(data) {
-  let html = `<strong>${esc(data.item)}</strong><br>`;
-  html += `${t("status")}: ${esc(statusLabel(data.availability))}<br>`;
-  html += `<span class="muted">${t("confirmed")}: ${esc(data.last_confirmed_at)}</span>`;
+  const cls = availClass(data.availability);
+  let html = `<div class="med-card">`;
+  html += `<div class="med-head">`;
+  html += `<span class="med-name">${esc(data.item)}</span>`;
+  html += `<span class="pill ${cls}">${esc(statusLabel(data.availability))}</span>`;
+  html += `</div>`;
+  html += `<div class="med-meta">${t("confirmed")}: ${esc(data.last_confirmed_at)}</div>`;
 
   if (data.freshness === "aging") {
     html += `<div class="notice aging">${t("outdated")} ${esc(String(data.hours_since_confirmed))} ${t("hoursAgo")}</div>`;
@@ -231,12 +287,31 @@ function formatStock(data) {
   if (data.freshness === "stale") {
     html += `<div class="notice stale">${t("stale")}</div>`;
   }
-  if (data.referral) {
-    html += formatReferral(data.referral);
-  }
+  html += `</div>`;
+
+  if (data.referral) html += formatReferral(data.referral);
   return html;
 }
 
+// Copy the referral code (works on phones and desktop)
+document.addEventListener("click", async e => {
+  const btn = e.target.closest("[data-copy]");
+  if (!btn) return;
+  const code = btn.dataset.copy;
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch (err) {
+    const ta = document.createElement("textarea");
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+  const original = btn.textContent;
+  btn.textContent = currentLang === "ceb" ? "Nakopya" : "Copied";
+  setTimeout(() => { btn.textContent = original; }, 1500);
+});
 function nextWhenLabel(when) {
   if (currentLang !== "ceb") return when;
   const ceb = {
@@ -897,3 +972,50 @@ if (statusText) statusText.textContent = t("connecting");
 fetch(`${API_BASE}/`)
   .then(() => setOnline(true))
   .catch(() => setOnline(false));
+// ---------- Menu actions: Sign out, Bisaya, Clear chat, Information ----------
+const signOutBtn = document.getElementById("signout");
+
+if (signOutBtn) {
+  signOutBtn.addEventListener("click", async () => {
+    setMenu(false);
+    try {
+      await logoutRequest();
+    } catch (err) {
+      // Even if the server can't be reached, clear the session on this device
+    }
+    clearAuth();
+    location.replace("login.html");
+  });
+}
+// ---------- end menu actions ----------
+
+// ---------- Tan-aw: tap fix for the three-dot menu ----------
+// Replaces the button with a fresh copy, so any older click listeners are removed.
+(function () {
+  const oldBtn = document.getElementById("menu-btn");
+  if (!oldBtn) return;
+
+  const btn = oldBtn.cloneNode(true);
+  oldBtn.parentNode.replaceChild(btn, oldBtn);
+
+  btn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const panelEl = document.getElementById("menu-panel");
+    if (!panelEl) return;
+    const willOpen = !panelEl.classList.contains("open");
+    panelEl.classList.toggle("open", willOpen);
+    btn.setAttribute("aria-expanded", String(willOpen));
+  });
+
+  // Tap anywhere else to close the menu
+  document.addEventListener("click", function (e) {
+    const wrap = document.getElementById("menu-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+      const panelEl = document.getElementById("menu-panel");
+      if (panelEl) panelEl.classList.remove("open");
+      btn.setAttribute("aria-expanded", "false");
+    }
+  });
+})();
+// ---------- end tap fix ----------
