@@ -1,7 +1,11 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "tanaw.db"
+import os
+
+# Local: backend\tanaw.db. Render: set DATABASE_PATH to the persistent disk file.
+DB_PATH = Path(os.getenv("DATABASE_PATH") or (Path(__file__).parent / "tanaw.db"))
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
