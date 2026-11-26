@@ -156,7 +156,7 @@ def register(data: RegisterIn):
     if invite and data.invite_code and secrets.compare_digest(
         data.invite_code.strip().encode(), invite.encode()
     ):
-        role = "staff"
+        role = "resident"  # staff accounts are created by an admin
 
     salt = secrets.token_hex(16)
     full_name = (data.full_name or "").strip() or username

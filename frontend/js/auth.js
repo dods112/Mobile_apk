@@ -62,6 +62,7 @@ function isStaffRole(role) {
 }
 
 function homePageFor(role) {
+  if (role === "admin") return "admin.html";
   return isStaffRole(role) ? "staff.html" : "index.html";
 }
 
@@ -216,6 +217,13 @@ function runGuard() {
     }
     if (AUTH_GUARD === "staff" && !isStaffRole(user.role)) {
       location.replace("index.html");
+      return;
+    }
+    if (
+      (AUTH_GUARD === "admin" && user.role !== "admin") ||
+      (AUTH_GUARD === "staff" && user.role !== "staff")
+    ) {
+      location.replace(homePageFor(user.role));
       return;
     }
     window.TANAW_USER = user;
