@@ -36,6 +36,9 @@ def ensure_auth_tables():
             expires_at TEXT NOT NULL
         );
     """)
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "center_id" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN center_id INTEGER")
     conn.commit()
     conn.close()
 
@@ -63,6 +66,7 @@ def _payload(user, token=None) -> dict:
         "username": user["username"],
         "role": user["role"],
         "full_name": user["full_name"],
+        "center_id": user["center_id"],
     }
     if token:
         data["token"] = token
@@ -75,7 +79,7 @@ def get_session_user(token):
     conn = get_connection()
     row = conn.execute(
         """
-        SELECT u.username, u.role, u.full_name, s.expires_at
+        SELECT u.username, u.role, u.full_name, u.center_id, s.expires_at
         FROM sessions s
         JOIN users u ON u.id = s.user_id
         WHERE s.token = ?
@@ -87,17 +91,21 @@ def get_session_user(token):
         return None
     if datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc):
         return None
-    return {"username": row["username"], "role": row["role"], "full_name": row["full_name"]}
+    return {
+        "username": row["username"],
+        "role": row["role"],
+        "full_name": row["full_name"],
+        "center_id": row["center_id"],
+    }
 
 
 def check_staff_access(token, pin=None) -> dict:
     user = get_session_user(token)
     if user and user["role"] in STAFF_ROLES:
         return user
-    # The old STAFF_PIN still works as a backup
     expected_pin = os.getenv("STAFF_PIN")
     if expected_pin and pin == expected_pin:
-        return {"username": "pin", "role": "staff", "full_name": "Staff"}
+        return {"username": "pin", "role": "staff", "full_name": "Staff", "center_id": None}
     raise HTTPException(status_code=401, detail="Kinahanglan og staff login.")
 
 
@@ -106,7 +114,6 @@ def require_staff(x_auth_token: str | None = Header(None), x_staff_pin: str | No
 
 
 def seed_admin():
-    # Creates the admin account once, from ADMIN_PASSWORD (and optional ADMIN_USERNAME)
     password = os.getenv("ADMIN_PASSWORD")
     if not password:
         return
@@ -168,7 +175,7 @@ def register(data: RegisterIn):
     token = _create_session(conn, user_id)
     conn.commit()
     user = conn.execute(
-        "SELECT username, role, full_name FROM users WHERE id = ?", (user_id,)
+        "SELECT username, role, full_name, center_id FROM users WHERE id = ?", (user_id,)
     ).fetchone()
     conn.close()
     return _payload(user, token)
@@ -178,7 +185,7 @@ def register(data: RegisterIn):
 def login(data: Credentials):
     conn = get_connection()
     user = conn.execute(
-        "SELECT id, username, password_hash, salt, role, full_name FROM users WHERE username = ?",
+        "SELECT id, username, password_hash, salt, role, full_name, center_id FROM users WHERE username = ?",
         (data.username.strip(),),
     ).fetchone()
     if user is None or not secrets.compare_digest(

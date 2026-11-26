@@ -2,8 +2,8 @@ import os
 import sqlite3
 from database import get_connection, init_db
 
-# Verified center. Phone and address from the public listing.
-# TODO: confirm the phone by calling, and replace the coordinates with the exact Google Maps pin.
+# Verified centers. Phone and address from the public listings.
+# TODO: confirm phones by calling, and replace placeholder coordinates with the exact Google Maps pins.
 CENTERS = [
     (
         "Tandag City Health Office and Birthing Clinic",
@@ -11,6 +11,14 @@ CENTERS = [
         "086-214-3349",
         "290 Delicona Street, Barangay Dagocdoc, Tandag City, Surigao del Sur",
         9.0785, 126.1980, True,
+    ),
+    (
+        "Provincial Health and Wellness Center",
+        "Telaje",
+        "0966 759 4244 / 0960 592 0041",
+        "Capitol Hills / Capitol Road, Telaje, Tandag City, Surigao del Sur",
+        9.0700, 126.1950,  # PLACEHOLDER coordinates: replace with the exact pin
+        False,  # no stock yet: add the stock list before referrals can use this center
     ),
 ]
 
@@ -28,6 +36,7 @@ ACTIVE_CENTERS = CENTERS + (SAMPLE_CENTERS if os.getenv("TANAW_SAMPLE") == "1" e
 # Centers not listed here get Monday to Friday, 8:00 AM to 12:00 PM.
 HOURS = {
     "Tandag City Health Office and Birthing Clinic": [(range(5), "08:00", "12:00")],
+    "Provincial Health and Wellness Center": [(range(5), "08:00", "17:00")],
     "Poblacion Health Station (SAMPLE)": [(range(5), "13:00", "17:00")],
     "Mabuhay Health Station (SAMPLE)": [(range(6), "07:00", "11:00")],
     "Dapa Health Station (SAMPLE)": [(range(5), "08:00", "11:30")],
@@ -53,7 +62,7 @@ ITEMS = [
     ("Hepatitis B Vaccine", "vaccine", "Bakuna batok sa hepatitis B.", ["hepa b", "hepatitis"]),
 ]
 
-# Stock for the verified center (placeholder until the health office confirms)
+# Starting stock for the Tandag office, in the same order as ITEMS (placeholder until confirmed)
 STOCK_PLAN = [
     "out_of_stock",  # Amoxicillin 250mg
     "in_stock",      # Paracetamol

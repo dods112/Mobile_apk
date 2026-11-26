@@ -6,7 +6,7 @@ const TYPE_LABELS = {
   vaccine: "Vaccine",
   hours: "Clinic hours",
   center_details: "Center details",
-};
+};  
 
 let centerNames = {};
 
