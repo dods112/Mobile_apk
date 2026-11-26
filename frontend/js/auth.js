@@ -36,8 +36,23 @@ function getAuth() {
   }
 }
 
+// Tan-aw: clear device chat on account change
+// Chat data stored on the device is not per user, so it is cleared when the account changes.
+const DEVICE_USER_KEYS = [
+  "tanaw_history", "tanaw_conv_id", "tanaw_saved_centers",
+  "tanaw_follows", "tanaw_notifs"
+];
+
+function clearDeviceUserData() {
+  DEVICE_USER_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+}
+
 function saveAuth(data) {
   try {
+    const prev = getAuth();
+    if (prev && prev.username && data && data.username && prev.username !== data.username) {
+      clearDeviceUserData();
+    }
     localStorage.setItem(AUTH_KEY, JSON.stringify(data));
   } catch (err) {
     console.error("Could not save session:", err);
@@ -45,6 +60,7 @@ function saveAuth(data) {
 }
 
 function clearAuth() {
+  clearDeviceUserData();
   try {
     localStorage.removeItem(AUTH_KEY);
   } catch {
