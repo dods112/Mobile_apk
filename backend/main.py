@@ -15,6 +15,7 @@ from nearby import find_nearby, TANDAG_CENTER
 from referral import build_referral
 from seed_data import reset_and_seed
 from auth import router as auth_router, ensure_auth_tables, seed_admin, check_staff_access
+from history_api import router as history_router, ensure_history_tables
 from staff_reports import router as staff_router
 
 PH_TZ = timezone(timedelta(hours=8))
@@ -92,6 +93,8 @@ reset_and_seed()
 ensure_auth_tables()
 seed_admin()
 app.include_router(auth_router)
+ensure_history_tables()
+app.include_router(history_router)
 app.include_router(staff_router)
 
 

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D6E63">
+  <title>Tan-aw AI</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230D6E63' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z'/%3E%3Cpath d='M9 11l2 2 4-4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css?v=108">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-sidebar">
+      <div class="logo-large">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+          <path d="M9 11l2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Tan-aw AI</h1>
+        <p>Rural Health Assistant</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button type="button" class="nav-item active" data-close-sidebar>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button type="button" class="nav-item" data-action="medicine">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7z"/><path d="M8 8l8 8"/></svg>
+        <span>Medicine</span>
+      </button>
+      <button type="button" class="nav-item" data-action="center">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>Find Center</span>
+      </button>
+      <button type="button" class="nav-item" data-action="hours">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>Clinic Hours</span>
+      </button>
+      <button type="button" class="nav-item" data-action="services">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/></svg>
+        <span>Services</span>
+      </button>
+
+      <!-- NEW (Phase 1) -->
+      <button type="button" class="nav-item" data-panel="centers">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+        <span>Health Centers</span>
+      </button>
+      <button type="button" class="nav-item" data-panel="saved">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <span>Saved Centers</span>
+      </button>
+
+      <button type="button" class="nav-item" onclick="alert('About page coming soon!')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span>About</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <p>Your Health,<br>Our Priority</p>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="brand-mobile" id="mobile-menu-btn" role="button" tabindex="0" aria-label="Open menu">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+            <path d="M9 11l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Tan-aw AI</h1>
+          <p id="tagline">Check before you go</p>
+        </div>
+      </div>
+
+            <div class="top-actions">
+        <span class="status" id="status">
+          <span class="dot"></span>
+          <span id="status-text">Connecting</span>
+        </span>
+
+        <button type="button" class="icon-btn mobile-only" data-action="center" aria-label="Find Center">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </button>
+
+        <div class="menu" id="menu-wrap">
+          <button type="button" class="icon-btn menu-toggle" id="menu-btn" aria-label="More options" aria-expanded="false" aria-controls="menu-panel">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.8"/>
+              <circle cx="12" cy="12" r="1.8"/>
+              <circle cx="12" cy="19" r="1.8"/>
+            </svg>
+          </button>
+
+          <div class="menu-panel" id="menu-panel">
+            <button class="text-btn" id="lang-btn" type="button">Bisaya</button>
+
+            <button class="icon-btn" id="clear-btn" type="button" aria-label="Clear chat" title="Clear chat">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+              <span class="menu-label" id="clear-label">Clear chat</span>
+            </button>
+
+            <button class="icon-btn" id="info-btn" type="button" aria-label="Information" aria-expanded="false" aria-controls="info-panel">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5"/>
+                <path d="M12 8h.01"/>
+              </svg>
+              <span class="menu-label" id="info-label">Information</span>
+            </button>
+
+            <button class="text-btn" id="signout" type="button">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- NEW (Phase 1): panel area for profiles, health centers, and saved centers -->
+    <section class="panel" id="panel" hidden></section>
+
+    <div class="info-panel" id="info-panel" hidden>
+      Tan-aw AI shows information from health centers. It is not medical advice.
+    </div>
+
+    <div id="chat" class="chat"></div>
+
+    <nav class="quick" aria-label="Shortcuts">
+      <button class="quick-btn" type="button" data-action="medicine">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7z"/><path d="M8 8l8 8"/></svg>
+        <span>Medicine</span>
+      </button>
+      <button class="quick-btn" type="button" data-action="hours">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>Clinic Hours</span>
+      </button>
+      <button class="quick-btn" type="button" data-action="center">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>
+        <span>Find Center</span>
+      </button>
+      <button class="quick-btn" type="button" data-action="services">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/></svg>
+        <span>Services</span>
+      </button>
+    </nav>
+
+    <form id="chat-form" class="composer" autocomplete="off">
+      <input id="message" type="text" placeholder="Ask about medicine, vaccines, or services..." aria-label="Message" required>
+      <button type="submit" class="send" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 2L11 13"/>
+          <path d="M22 2l-7 20-4-9-9-4z"/>
+        </svg>
+      </button>
+    </form>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/api.js?v=104"></script>
+<script src="js/auth.js?v=106" data-guard="resident"></script>
+<script src="js/lang.js?v=104"></script>
+<script src="js/map.js?v=104"></script>
+<script src="js/notify.js?v=110"></script>
+<script src="js/chat.js?v=104"></script>
+</body>
+</html>

@@ -167,7 +167,12 @@ function applyLanguage() {
   if (info) info.textContent = t("info");
 
   if (input) input.placeholder = t("placeholder");
-  if (langBtn) langBtn.textContent = t("switchTo");
+  if (langBtn) {
+    const ceb = currentLang === "ceb";
+    langBtn.innerHTML = `<span class="lang-seg${ceb ? "" : " on"}">EN</span><span class="lang-seg${ceb ? " on" : ""}">Bisaya</span>`;
+    langBtn.setAttribute("aria-label", ceb ? "Switch to English" : "Switch to Bisaya");
+    langBtn.title = ceb ? "Switch to English" : "Switch to Bisaya";
+  }
   if (clearBtn) {
     clearBtn.title = t("clear");
     clearBtn.setAttribute("aria-label", t("clear"));
@@ -232,7 +237,7 @@ function formatReferral(ref) {
   }
 
   const dist = ref.distance_km != null
-    ? ` · ${esc(String(ref.distance_km))} ${t("km")}`
+    ? ` Ã‚Â· ${esc(String(ref.distance_km))} ${t("km")}`
     : "";
   const isCeb = currentLang === "ceb";
   const validLabel = isCeb ? "Valid hangtod" : "Valid until";
@@ -930,6 +935,7 @@ if (langBtn) {
 
 if (clearBtn) {
   clearBtn.addEventListener("click", () => {
+    if (!confirm(currentLang === "ceb" ? "Hawanon ang chat?" : "Clear this chat? This cannot be undone.")) return;
     messages = [];
     saveMessages();
     renderAll();
