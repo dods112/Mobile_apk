@@ -237,7 +237,7 @@ function formatReferral(ref) {
   }
 
   const dist = ref.distance_km != null
-    ? ` Â· ${esc(String(ref.distance_km))} ${t("km")}`
+    ? ` - ${esc(String(ref.distance_km))} ${t("km")}`
     : "";
   const isCeb = currentLang === "ceb";
   const validLabel = isCeb ? "Valid hangtod" : "Valid until";
