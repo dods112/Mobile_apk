@@ -14,4 +14,4 @@ typing_extensions==4.16.0
 tzdata==2026.6
 uvicorn==0.54.0
 rapidfuzz==3.14.6
-libsql-client
+requests==2.34.2

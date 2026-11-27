@@ -1,5 +1,4 @@
 import os
-import libsql_client
 import sqlite3
 from pathlib import Path
 
@@ -12,7 +11,7 @@ USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 # Shown in the Render Logs on every start
 if (TURSO_URL and not TURSO_TOKEN) or (TURSO_TOKEN and not TURSO_URL):
     raise RuntimeError("Set both TURSO_DATABASE_URL and TURSO_AUTH_TOKEN, or neither.")
-print("[db] Using Turso" if USE_TURSO else "[db] Using local SQLite (TURSO_* variables not set)")
+print("[db] Using Turso over HTTPS" if USE_TURSO else "[db] Using local SQLite (TURSO_* variables not set)")
 
 DB_PATH = Path(os.getenv("DATABASE_PATH") or (Path(__file__).parent / "tanaw.db"))
 if not USE_TURSO:
@@ -66,16 +65,50 @@ def _map_error(exc):
     return sqlite3.OperationalError(msg)
 
 
-class _TursoConn:
-    def __init__(self, conn):
-        self._conn = conn
+class _TursoHTTP:
+    # Turso over HTTPS. Used on Render. Keeps the same execute/commit/close API as sqlite3.
+    def __init__(self, url, token):
+        import requests
+        self._session = requests.Session()
+        self._session.headers.update({
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json",
+        })
+        self._endpoint = url.replace("libsql://", "https://", 1).rstrip("/") + "/v2/pipeline"
+        self._pending = []  # statements run in one batch on commit
+
+    def _run(self, requests_list):
+        try:
+            resp = self._session.post(self._endpoint, json={"requests": requests_list}, timeout=60)
+        except Exception as exc:
+            raise sqlite3.OperationalError("Cannot reach Turso: " + str(exc))
+        if resp.status_code != 200:
+            raise sqlite3.OperationalError("Turso returned HTTP %s: %s" % (resp.status_code, resp.text[:300]))
+        data = resp.json()
+        for r in data.get("results", []):
+            if r.get("type") == "error":
+                msg = (r.get("error") or {}).get("message", "Turso error")
+                if "UNIQUE" in msg.upper() or "CONSTRAINT" in msg.upper():
+                    raise sqlite3.IntegrityError(msg)
+                raise sqlite3.OperationalError(msg)
+        return data.get("results", [])
+
+    def _arg(self, v):
+        if v is None:
+            return {"type": "null"}
+        if isinstance(v, bool):
+            return {"type": "integer", "value": str(int(v))}
+        if isinstance(v, int):
+            return {"type": "integer", "value": str(v)}
+        if isinstance(v, float):
+            return {"type": "float", "value": v}
+        return {"type": "text", "value": str(v)}
 
     def execute(self, sql, params=()):
-        try:
-            cur = self._conn.execute(sql, tuple(params))
-        except Exception as exc:
-            raise _map_error(exc)
-        return _Cursor(cur)
+        stmt = {"sql": sql, "args": [self._arg(p) for p in tuple(params)]}
+        # Reads run now so results can be returned; writes are sent right away too
+        results = self._run([{"type": "execute", "stmt": stmt}, {"type": "close"}])
+        return _TursoCursor(results[0]["response"]["result"])
 
     def executescript(self, script):
         for stmt in script.split(";"):
@@ -83,21 +116,40 @@ class _TursoConn:
                 self.execute(stmt.strip())
 
     def commit(self):
-        try:
-            self._conn.commit()
-        except Exception as exc:
-            raise _map_error(exc)
+        return None  # each statement is applied as it runs
 
     def close(self):
-        try:
-            self._conn.close()
-        except Exception:
-            pass
+        self._session.close()
 
+
+class _TursoCursor:
+    def __init__(self, result):
+        self._cols = [c.get("name") for c in result.get("cols", [])]
+        self._rows = [
+            _Row(self._cols, [self._value(c) for c in row]) for row in result.get("rows", [])
+        ]
+        self.lastrowid = result.get("last_insert_rowid")
+        self.rowcount = result.get("affected_row_count", -1)
+
+    def _value(self, cell):
+        if cell is None or cell.get("type") == "null":
+            return None
+        v = cell.get("value")
+        if cell.get("type") == "integer":
+            return int(v)
+        if cell.get("type") == "float":
+            return float(v)
+        return v
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self):
+        return list(self._rows)
 
 def get_connection():
     if USE_TURSO:
-        return _TursoConn(libsql_client.create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN))
+        return _TursoHTTP(TURSO_URL, TURSO_TOKEN)
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
