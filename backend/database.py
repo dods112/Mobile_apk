@@ -8,6 +8,11 @@ TURSO_URL = os.getenv("TURSO_DATABASE_URL")
 TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
 USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 
+# Shown in the Render Logs on every start
+if (TURSO_URL and not TURSO_TOKEN) or (TURSO_TOKEN and not TURSO_URL):
+    raise RuntimeError("Set both TURSO_DATABASE_URL and TURSO_AUTH_TOKEN, or neither.")
+print("[db] Using Turso" if USE_TURSO else "[db] Using local SQLite (TURSO_* variables not set)")
+
 DB_PATH = Path(os.getenv("DATABASE_PATH") or (Path(__file__).parent / "tanaw.db"))
 if not USE_TURSO:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
