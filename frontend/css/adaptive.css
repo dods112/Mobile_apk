@@ -109,3 +109,33 @@ button, input, select, textarea { font: inherit; }
   color: #0D6E63;
   font-weight: 600;
 }
+
+/* Dedicated pages scroll on phones (medicines, centers, saved, about, admin) */
+html, body.page-body {
+  height: auto !important;
+  min-height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+body.page-body {
+  -webkit-overflow-scrolling: touch;
+}
+body.page-body .app-layout,
+body.page-body .main-content {
+  height: auto !important;
+  min-height: 100vh;
+  overflow: visible !important;
+}
+body.page-body .list,
+body.page-body .page,
+body.page-body .empty,
+body.page-body #list,
+body.page-body #map {
+  overflow: visible;
+}
+@media (max-width: 767px) {
+  body.page-body .sidebar {
+    position: fixed;
+    height: 100%;
+  }
+}
