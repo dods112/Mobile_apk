@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D6E63">
+  <title>Register - Tan-aw AI</title>
+  <link rel="stylesheet" href="css/auth.css?v=114">
+</head>
+<body>
+  <main class="auth-card">
+    <div class="auth-logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+        <path d="M9 11l2 2 4-4"/>
+      </svg>
+    </div>
+    <h1>Create account</h1>
+    <p class="auth-sub">Register to check medicine and health centers</p>
+
+    <form id="register-form" class="auth-form" novalidate>
+      <div class="field">
+        <label for="fullname">Full name <span style="font-weight:400;color:#647A78">(optional)</span></label>
+        <input id="fullname" name="fullname" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <span class="hint">3 to 30 letters, numbers, dots, dashes, or underscores.</span>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <input id="password" class="has-toggle" name="password" type="password" autocomplete="new-password" minlength="6" required>
+          <button type="button" class="toggle-pw" data-toggle="password" aria-label="Show password">Show</button>
+        </div>
+        <span class="hint" id="pw-hint">At least 6 characters.</span>
+      </div>
+      <div class="field">
+        <label for="confirm">Confirm password</label>
+        <div class="input-wrap">
+          <input id="confirm" class="has-toggle" name="confirm" type="password" autocomplete="new-password" required>
+          <button type="button" class="toggle-pw" data-toggle="confirm" aria-label="Show password">Show</button>
+        </div>
+      </div>
+
+      <div class="auth-error" id="error" role="alert"></div>
+      <button id="submit" class="auth-btn" type="submit">Register</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+    <p class="auth-foot">Accounts for staff are created by the health center administrator.</p>
+  </main>
+
+  <script src="js/api.js?v=114"></script>
+  <script src="js/auth.js?v=114" data-guard="none"></script>
+  <script>
+    const form = document.getElementById("register-form");
+    const errorEl = document.getElementById("error");
+    const submitBtn = document.getElementById("submit");
+    const pwHint = document.getElementById("pw-hint");
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.add("show");
+    }
+
+    document.querySelectorAll("[data-toggle]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const input = document.getElementById(btn.dataset.toggle);
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.textContent = show ? "Hide" : "Show";
+        btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      });
+    });
+
+    document.getElementById("password").addEventListener("input", e => {
+      const ok = e.target.value.length >= 6;
+      pwHint.textContent = ok ? "Good length." : "At least 6 characters.";
+      pwHint.classList.toggle("ok", ok);
+    });
+
+    checkSession().then(user => {
+      if (user) location.replace(homePageFor(user.role));
+    });
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      errorEl.classList.remove("show");
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+
+      if (!username) return showError("Enter a username.");
+      if (password.length < 6) return showError("Password must be at least 6 characters.");
+      if (password !== confirm) return showError("The two passwords do not match.");
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating account...";
+      try {
+        const data = await registerRequest(
+          username,
+          password,
+          document.getElementById("fullname").value.trim(),
+          ""
+        );
+        saveAuth(data);
+        location.replace(homePageFor(data.role));
+      } catch (err) {
+        showError(err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Register";
+      }
+    });
+  </script>
+</body>
+</html>
