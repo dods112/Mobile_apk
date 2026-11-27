@@ -5,8 +5,8 @@ from pathlib import Path
 
 # Turso is used only when both variables are set (on Render).
 # Locally they are not set, so the SQLite file is used as before.
-TURSO_URL = os.getenv("TURSO_DATABASE_URL")
-TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
+TURSO_URL = (os.getenv("TURSO_DATABASE_URL") or "").strip() or None
+TURSO_TOKEN = (os.getenv("TURSO_AUTH_TOKEN") or "").strip() or None
 USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 
 # Shown in the Render Logs on every start
