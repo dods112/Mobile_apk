@@ -99,9 +99,7 @@ function buildSidebar() {
     </a>`).join("");
   aside.innerHTML = `
     <div class="brand-sidebar">
-      <div class="logo-large">
-        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M9 11l2 2 4-4"/></svg>
-      </div>
+      <div class="logo-large"><img src="img/logo.png" alt="Tan-aw AI" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;display:block"></div>
       <div class="brand-text">
         <h1>Tan-aw AI</h1>
         <p>Check before you go</p>
