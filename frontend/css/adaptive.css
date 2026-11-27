@@ -164,3 +164,22 @@ body.page-body .sidebar {
     min-width: 0;
   }
 }
+
+/* Health Centers map has a fixed height so Leaflet can draw it */
+#map {
+  height: 260px !important;
+  min-height: 260px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: block !important;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
+}
+@media (min-width: 769px) {
+  #map {
+    height: 340px !important;
+    min-height: 340px !important;
+  }
+}
