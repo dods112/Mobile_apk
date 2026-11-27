@@ -1167,3 +1167,152 @@ chat.addEventListener("click", function (e) {
   send(b.dataset.ask);
 });
 // ---------- end medicine list ----------
+
+// Tan-aw: question sent from the Medicine Directory
+(function () {
+  var p = sessionStorage.getItem("tanaw_pending_ask");
+  if (!p) return;
+  sessionStorage.removeItem("tanaw_pending_ask");
+  setTimeout(function () {
+    if (typeof send === "function") send(p);
+  }, 700);
+})();
+
+// Tan-aw: services reply v2. Keeps the center name on its own line, no stray colon.
+const _tanawFormatReplyBeforeServices = formatReply;
+formatReply = function (data) {
+  if (data && data.result === "text" && typeof data.message === "string" &&
+      /^Services at /i.test(data.message)) {
+    // Split "Services at X: a, b, c." into a heading and a list
+    const m = data.message.match(/^Services at (.+?):\s*(.+?)\.?$/is);
+    if (m) {
+      const center = m[1].trim();
+      const services = m[2].split(/,\s*/).map(s => s.trim()).filter(Boolean);
+      const isCeb = currentLang === "ceb";
+      const head = isCeb ? "Mga serbisyo sa" : "Services at";
+      const items = services.map(s => `<li>${esc(s)}</li>`).join("");
+      return `<div class="svc-wrap">
+        <div class="svc-head">${esc(head)}</div>
+        <div class="svc-center">${esc(center)}</div>
+        <ul class="svc-list">${items}</ul>
+      </div>`;
+    }
+  }
+  return _tanawFormatReplyBeforeServices(data);
+};
+// Tan-aw: end services reply v2
+
+// Tan-aw: services for every health center, one card each
+(function () {
+  var SVC_RE = /service|serbisyo/i;
+  var MED_RE = /amox|paracet|biogesic|medic|tambal|vaccine|bakuna|bioflu|lagundi|ors\b|metformin|losartan/i;
+  var origSendMessage = sendMessage;
+
+  sendMessage = async function (message, center, loc) {
+    var data = await origSendMessage(message, center, loc);
+    var text = String(message || "");
+    if (!SVC_RE.test(text) || MED_RE.test(text)) return data;
+    if (!data || data.result !== "text") return data;
+    try {
+      var centers = (await getCenters()).filter(function (c) { return c.is_participating !== 0; });
+      var profiles = await Promise.all(centers.map(function (c) {
+        return getCenterProfile(c.id).then(function (p) {
+          return {
+            name: p.name || c.name,
+            address: p.address || c.address || "",
+            contact: p.contact || p.contact_number || c.contact_number || "",
+            services: p.services || []
+          };
+        }).catch(function () { return null; });
+      }));
+      return { result: "services_list", list: profiles.filter(Boolean) };
+    } catch (e) {
+      return data;
+    }
+  };
+
+  var prevFormat = formatReply;
+  formatReply = function (data) {
+    if (data && data.result === "services_list") {
+      var isCeb = currentLang === "ceb";
+      var head = isCeb ? "Mga serbisyo sa matag health center:" : "Services at each health center:";
+      if (!data.list.length) {
+        return esc(isCeb ? "Walay nakit-an nga health center." : "No health center found.");
+      }
+      var cards = data.list.map(function (c) {
+        var items = c.services.length
+          ? '<ul class="svc-list">' + c.services.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul>"
+          : '<div class="svc-none">' + esc(isCeb ? "Walay nalista nga serbisyo." : "No services listed.") + "</div>";
+        var digits = String(c.contact).split("/")[0].replace(/[^\d+]/g, "");
+        var call = /\d/.test(digits)
+          ? '<a class="svc-call" href="tel:' + esc(digits) + '">' + esc(isCeb ? "Tawag" : "Call") + "</a>"
+          : "";
+        return '<article class="svc-card">' +
+          '<div class="svc-card-name">' + esc(c.name) + "</div>" +
+          (c.address ? '<div class="svc-card-addr">' + esc(c.address) + "</div>" : "") +
+          items + call +
+        "</article>";
+      }).join("");
+      return '<div class="svc-wrap"><div class="svc-head">' + esc(head) + "</div>" + cards + "</div>";
+    }
+    return prevFormat(data);
+  };
+})();
+// Tan-aw: end services for every health center
+
+// Tan-aw: follow-up context v2
+// The last medicine is stored whenever the server returns one, so follow-ups still work after reloads.
+(function () {
+  var LAST_KEY = "tanaw_last_item";
+  var _send = send;
+  var _sendMessage = sendMessage;
+
+  // Save the medicine name from every server reply that has one
+  sendMessage = async function (message, center, loc) {
+    var data = await _sendMessage(message, center, loc);
+    if (data && data.item) {
+      try { localStorage.setItem(LAST_KEY, String(data.item)); } catch (e) {}
+    }
+    return data;
+  };
+
+  // Words that point back to the last medicine (Bisaya and English)
+  var FOLLOW = /\b(mana|ana|kana|kuha|makuha|asa|where|it|kini|ato|ani|naa ba|available)\b/i;
+  // Asking where to get it
+  var WHERE = /\b(asa|where|makuha|kuha|pick up|buy|get)\b/i;
+  // Questions about centers, hours, or services are not follow-ups
+  var OTHER = /pinakaduol|nearest|nearby|center|centro|serbisyo|services|oras|hours|bukas|open|sirado|vaccine|bakuna/i;
+
+  function lastItem() {
+    if (!messages.length) return null;
+    try { return localStorage.getItem(LAST_KEY); } catch (e) { return null; }
+  }
+
+  send = function (text, opts) {
+    var clean = String(text || "").trim();
+    var item = lastItem();
+    var isFollowUp =
+      item &&
+      clean &&
+      !(opts && opts.silent) &&
+      clean.split(/\s+/).length <= 8 &&
+      FOLLOW.test(clean) &&
+      !OTHER.test(clean);
+
+    if (isFollowUp) {
+      var where = WHERE.test(clean);
+      var question = where ? "asa naa ang " + item : "naa ba ang " + item;
+      return _send(question, Object.assign({}, opts || {}, { nearby: where }));
+    }
+    return _send(text, opts);
+  };
+
+  // Clearing the chat also clears the remembered medicine
+  var clearBtnEl = document.getElementById("clear-btn");
+  if (clearBtnEl) {
+    clearBtnEl.addEventListener("click", function () {
+      try { localStorage.removeItem(LAST_KEY); } catch (e) {}
+    });
+  }
+})();
+// Tan-aw: end follow-up context v2

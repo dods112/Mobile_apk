@@ -9,7 +9,8 @@ from pydantic import BaseModel
 
 from database import get_connection
 from freshness import freshness_state
-from intent import detect_intent
+from intent import detect_intent, CLARIFY
+from context import ensure_context_table, user_key, load_context, save_context
 from schedule import open_now, list_services
 from nearby import find_nearby, TANDAG_CENTER
 from referral import build_referral
@@ -98,6 +99,7 @@ app.include_router(admin_router)
 ensure_history_tables()
 app.include_router(history_router)
 app.include_router(staff_router)
+ensure_context_table()
 
 
 class StockUpdate(BaseModel):
@@ -283,6 +285,44 @@ def nearby(
     return find_nearby(item, user_lat, user_lng)
 
 
+PRICE_TEXT = {
+    "en": "Medicine prices and free-medicine programs are not recorded yet. Please ask the health center directly.",
+    "ceb": "Wala pa natala ang presyo o libre nga tambal sa sistema. Pangutana direkta sa health center.",
+}
+
+
+def _route_chat(intent, cid, item, clarify_key, lang, ulat, ulng):
+    if intent == "greeting":
+        return {"result": "text", "message": tx(lang, "greeting")}
+    if intent == "acknowledge":
+        return {"result": "text", "message": "Sige. Unsa pa ang gusto nimo?" if lang == "ceb" else "Okay. What else would you like to know?"}
+    if intent == "thanks":
+        return {"result": "text", "message": tx(lang, "thanks")}
+    if intent in ("medical_advice", "general_health_information"):
+        return {"result": "text", "message": tx(lang, "medical")}
+    if intent == "clarification":
+        return {"result": "text", "message": CLARIFY[clarify_key][lang]}
+    if intent in ("medicine_price", "free_medicine_inquiry", "purchase_info"):
+        return {"result": "text", "message": PRICE_TEXT[lang]}
+    if intent == "clinic_hours":
+        return open_now(cid)
+    if intent == "health_services":
+        return {"result": "text", "message": _services_text(cid, lang)}
+    if intent in ("find_health_center", "alternative_health_center"):
+        return find_nearby(item if intent == "alternative_health_center" else None, ulat, ulng)
+    if intent == "find_medicine_location":
+        if item:
+            return find_nearby(item, ulat, ulng)
+        return {"result": "text", "message": CLARIFY[clarify_key or "purchase_or_center"][lang]}
+    if intent in ("medicine_availability", "vaccine_availability"):
+        if item:
+            return check_stock(item=item, center=cid, lang=lang)
+        return {"result": "text", "message": tx(lang, "unknown")}
+    if intent in ("medicine_search", "center_availability"):
+        return _items_reply(cid, lang)
+    return {"result": "unknown", "message": tx(lang, "unknown")}
+
+
 @app.get("/api/chat")
 def chat(
     message: str = Query(..., min_length=2),
@@ -290,32 +330,29 @@ def chat(
     lang: str = Query("en"),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
+    x_auth_token: Optional[str] = Header(None),
 ):
     lang = normalize_lang(lang)
-    result = detect_intent(message, center)
-    intent = result["intent"]
     user_lat = lat if lat is not None else TANDAG_CENTER[0]
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
-    wants_nearby = any(word in message.lower() for word in NEARBY_WORDS)
 
-    if intent == "greeting":
-        return {"result": "text", "message": tx(lang, "greeting")}
-    if intent == "thanks":
-        return {"result": "text", "message": tx(lang, "thanks")}
-    if intent == "medical_advice":
-        return {"result": "text", "message": tx(lang, "medical")}
-    if intent == "open_now":
-        return open_now(center)
-    if intent == "services":
-        return {"result": "text", "message": _services_text(center, lang)}
-    if intent == "list_items":
-        return _items_reply(center, lang)
-    if wants_nearby:
-        return find_nearby(result.get("item"), user_lat, user_lng)
-    if intent == "stock":
-        return check_stock(item=result["item"], center=center, lang=lang)
+    key = user_key(x_auth_token)
+    ctx = load_context(key)
+    d = detect_intent(message, center, ctx)
+    intent = d["intent"]
+    cid = d["center"]
+    item = d["item"]
 
-    return {"result": "unknown", "message": tx(lang, "unknown")}
+    reply = _route_chat(intent, cid, item, d.get("clarify_key"), lang, user_lat, user_lng)
+
+    save_context(
+        key,
+        last_item=item or ctx.get("last_item"),
+        last_center=d["center_explicit"] or ctx.get("last_center"),
+        last_intent=intent,
+        pending=d.get("clarify_key"),
+    )
+    return reply
 
 
 @app.get("/api/centers")

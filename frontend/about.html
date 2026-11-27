@@ -4,11 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>About Tan-aw AI</title>
-  <link rel="stylesheet" href="css/style.css?v=111">
-  <link rel="stylesheet" href="css/responsive.css?v=111">
-  <link rel="stylesheet" href="css/pages.css?v=111">
-  <link rel="stylesheet" href="css/adaptive.css?v=120">
-  <link rel="icon" type="image/png" href="img/logo.png">
+  <link rel="stylesheet" href="css/style.css?v=122">
+  <link rel="stylesheet" href="css/responsive.css?v=122">
+  <link rel="stylesheet" href="css/pages.css?v=122">
+  <link rel="stylesheet" href="css/adaptive.css?v=127">
 </head>
 <body class="page-body" data-active="about">
 <div class="app-layout">
@@ -16,7 +15,6 @@
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <main class="main-content">
     <header class="topbar page-top">
-      <a href="index.html" class="back-link" aria-label="Back to chat"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
       <div class="brand-mobile" id="mobile-menu-btn" role="button" tabindex="0" aria-label="Open menu">
         <div class="logo">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
@@ -26,13 +24,21 @@
     </header>
     <section class="page">
       <div class="card about-card">
+        <h2>How to use</h2>
+        <ol class="how-steps">
+          <li>Ask in English or Bisaya, such as "Is amoxicillin available?"</li>
+          <li>Check the status and the time it was last confirmed.</li>
+          <li>If it is out of stock here, use the referral code at a nearby center, and call first.</li>
+        </ol>
+      </div>
+      <div class="card about-card">
         <h2>What Tan-aw AI is</h2>
         <p>Tan-aw AI helps residents of Tandag City check medicine and vaccine availability at health centers before they travel. The tagline is "Check before you go."</p>
       </div>
       <div class="card about-card">
         <h2>How the chatbot works</h2>
         <ul>
-          <li>Ask in English or Bisaya, such as "Is amoxicillin available?"</li>
+          <li>Ask in English or Bisaya.</li>
           <li>Replies show stock status, when it was last confirmed, opening hours, and nearby centers.</li>
           <li>When an item is unavailable, a referral code may point you to another center for 24 hours.</li>
         </ul>
@@ -49,12 +55,13 @@
         <h2>Privacy</h2>
         <p>Your account, chat history, saved centers, and followed medicines are stored for the app to work. The app does not store medical records.</p>
       </div>
+      <p class="about-foot">Tan-aw AI version 1.0. For help, contact your health center directly.</p>
     </section>
   </main>
 </div>
-<script src="js/api.js?v=111"></script>
-<script src="js/lang.js?v=111"></script>
-<script src="js/auth.js?v=111" data-guard="resident"></script>
-<script src="js/pages.js?v=117"></script>
+<script src="js/api.js?v=122"></script>
+<script src="js/lang.js?v=122"></script>
+<script src="js/auth.js?v=122" data-guard="resident"></script>
+<script src="js/pages.js?v=122"></script>
 </body>
 </html>
