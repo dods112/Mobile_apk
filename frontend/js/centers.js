@@ -28,7 +28,7 @@
         .bindPopup(esc(c.name)).addTo(state.markers);
       bounds.push([c.latitude, c.longitude]);
     });
-    if (state.loc) bounds.push([state.loc.lat, state.loc.lng]);
+    
     if (bounds.length > 1) state.map.fitBounds(bounds, { padding: [24, 24] });
   }
 
@@ -94,7 +94,7 @@
   function render() {
     var list = visibleList();
     listEl.innerHTML = list.length ? list.map(cardHtml).join("") : '<div class="empty">No health center matches your search.</div>';
-    drawMarkers(list);
+    
   }
 
   async function toggleDetails(id) {
@@ -135,7 +135,7 @@
   });
 
   async function init() {
-    initMap();
+    
     listEl.innerHTML = '<div class="muted">Loading health centers...</div>';
     try {
       state.centers = (await getCenters()).filter(function (c) { return c.is_participating !== 0; });
