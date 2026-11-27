@@ -1,0 +1,141 @@
+/* Tan-aw AI: adaptive layout. Desktop, tablet, and phone adjust automatically.
+   Layout, spacing, and sizing only. Colors come from the existing theme. */
+
+:root {
+  --content-max: 1100px;
+  --chat-max: 860px;
+}
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+img, svg, video, iframe { max-width: 100%; }
+h1, h2, h3 { overflow-wrap: anywhere; }
+button, input, select, textarea { font: inherit; }
+
+/* Centered content column on every dedicated page */
+.page {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: clamp(12px, 2.5vw, 28px);
+}
+
+/* Lists adapt: one column on phones, two on tablets, three on desktop */
+.list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(10px, 1.5vw, 16px);
+  align-items: start;
+}
+@media (min-width: 640px) {
+  .list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Chat: one centered column on desktop, full width on phones */
+@media (min-width: 1024px) {
+  .main-content > .chat,
+  .main-content > .quick,
+  .main-content > .composer,
+  .main-content > .info-panel,
+  .main-content > .panel {
+    width: 100%;
+    max-width: var(--chat-max);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Staff dashboard: wider, two columns for medicine cards */
+@media (min-width: 1024px) {
+  .staff-main, .staff-tabs { max-width: 1040px; }
+  #items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+  #items .item-card { margin-bottom: 0; }
+}
+
+/* Admin page: wider form and staff list on desktop */
+@media (min-width: 1024px) {
+  .wrap { max-width: 980px; }
+}
+
+/* Phones: comfortable tap targets and spacing */
+@media (max-width: 767px) {
+  .page { padding: 12px; gap: 10px; }
+  .card { padding: 14px; }
+  .search { min-height: 44px; }
+  .btn, .chip, .copy-btn, .back-btn, .text-btn, .mini-btn,
+  .status-buttons button, .staff-tab {
+    min-height: 44px;
+  }
+  .actions { gap: 8px; }
+}
+
+/* Very small phones (360px and under) */
+@media (max-width: 360px) {
+  .page { padding: 10px; }
+  .card { padding: 12px; }
+  .bubble { font-size: 0.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Referral buttons: fit the card and wrap cleanly on phones */
+.ref-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+}
+.ref-act {
+  flex: 1 1 140px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  text-align: center;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ref-card a:not(.ref-act) {
+  color: #0D6E63;
+  font-weight: 600;
+}
+
+/* Dedicated pages scroll on phones (medicines, centers, saved, about, admin) */
+html, body.page-body {
+  height: auto !important;
+  min-height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+body.page-body {
+  -webkit-overflow-scrolling: touch;
+}
+body.page-body .app-layout,
+body.page-body .main-content {
+  height: auto !important;
+  min-height: 100vh;
+  overflow: visible !important;
+}
+body.page-body .list,
+body.page-body .page,
+body.page-body .empty,
+body.page-body #list,
+body.page-body #map {
+  overflow: visible;
+}
+@media (max-width: 767px) {
+  body.page-body .sidebar {
+    position: fixed;
+    height: 100%;
+  }
+}
