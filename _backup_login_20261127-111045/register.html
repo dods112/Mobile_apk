@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D6E63">
+  <title>Register - Tan-aw AI</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body class="auth-body">
+  <main class="auth-card">
+    <div class="auth-logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+        <path d="M9 11l2 2 4-4"/>
+      </svg>
+    </div>
+    <h1>Create account</h1>
+    <p class="auth-sub">Register to use Tan-aw AI</p>
+
+    <form id="register-form" class="auth-form">
+      <label for="fullname">Full name (optional)</label>
+      <input id="fullname" name="fullname" autocomplete="name">
+
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" required>
+      <div class="auth-hint">3 to 30 letters, numbers, dots, dashes, or underscores.</div>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required>
+
+      <label for="confirm">Confirm password</label>
+      <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+
+      <label for="invite">Staff invite code (staff only)</label>
+      <input id="invite" name="invite" autocomplete="off">
+      <div class="auth-hint">Leave this empty if you are a resident.</div>
+
+      <div class="auth-error" id="error" role="alert"></div>
+      <button id="submit" class="auth-btn" type="submit">Register</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+  </main>
+
+  <script src="js/api.js?v=106"></script>
+  <script src="js/auth.js?v=106"></script>
+  <script>
+    const form = document.getElementById("register-form");
+    const errorEl = document.getElementById("error");
+    const submitBtn = document.getElementById("submit");
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.add("show");
+    }
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      errorEl.classList.remove("show");
+
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+      if (password !== confirm) {
+        showError("Dili pareho ang password.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating account...";
+
+      try {
+        const data = await registerRequest(
+          document.getElementById("username").value.trim(),
+          password,
+          document.getElementById("fullname").value.trim(),
+          document.getElementById("invite").value.trim()
+        );
+        saveAuth(data);
+        location.replace(homePageFor(data.role));
+      } catch (err) {
+        showError(err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Register";
+      }
+    });
+  </script>
+</body>
+</html>
