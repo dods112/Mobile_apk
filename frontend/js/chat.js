@@ -360,6 +360,7 @@ function formatOpenNow(data) {
   return html;
 }
 
+// Tan-aw: compact health center cards (only verified data is shown)
 function formatNearby(data) {
   if (!data.centers.length) {
     return data.item
@@ -368,35 +369,73 @@ function formatNearby(data) {
   }
 
   const ordered = orderCenters(data.centers);
-
   const title = data.item
     ? `${t("nearbyItem")} <strong>${esc(data.item)}</strong>:`
     : `<strong>${esc(t("nearby"))}</strong>`;
 
-  const list = ordered.map((c, i) => {
+  const cards = ordered.map((c, i) => {
     const main = isMainCenter(c);
-    const line1 = `${i + 1}. <strong>${esc(c.center)}</strong>` +
-      (main ? ` (${esc(mapText("main"))})` : "") +
-      ` - ${esc(String(c.distance_km))} ${mapText("km")}`;
-    const line2 = data.item
-      ? `${esc(statusLabel(c.availability))} - <span class="muted">${esc(c.last_confirmed_at)}</span>`
-      : `<span class="muted">${esc(c.address || "")}</span>`;
-    const phone = c.contact
-      ? `<br><span class="muted">${esc(mapText("call"))}: ${esc(c.contact)}</span>`
+    const distance = c.distance_km != null
+      ? `${esc(String(c.distance_km))} ${esc(mapText("km"))}`
       : "";
-    const directions = (c.lat != null && c.lng != null)
-      ? `<br><a class="dir-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}">${esc(mapText("directions"))}</a>`
+
+    let statusBadge = "";
+    if (c.open_now === true) statusBadge = `<span class="hc-open">Open now</span>`;
+    if (c.open_now === false) statusBadge = `<span class="hc-closed">Closed now</span>`;
+
+    const hours = c.hours ? `<div class="hc-line">${esc(c.hours)}</div>` : "";
+
+    // Phone number is shown on the card itself
+    const phone = c.contact ? String(c.contact) : "";
+    const phoneDigits = phone.split("/")[0].replace(/[^\d+]/g, "");
+    const phoneLine = phone
+      ? `<div class="hc-phone">${esc(mapText("call"))}: ${
+          /\d/.test(phoneDigits)
+            ? `<a href="tel:${esc(phoneDigits)}">${esc(phone)}</a>`
+            : esc(phone)
+        }</div>`
       : "";
-    return `<div class="center-item">${line1}<br>${line2}${phone}${directions}</div>`;
+
+    const callBtn = /\d/.test(phoneDigits)
+      ? `<a class="hc-btn hc-btn-outline" href="tel:${esc(phoneDigits)}">${esc(mapText("call"))}</a>`
+      : "";
+
+    const dirBtn = (c.lat != null && c.lng != null)
+      ? `<a class="hc-btn hc-btn-solid" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}">${esc(mapText("directions"))}</a>`
+      : "";
+
+    const stock = data.item
+      ? `<div class="hc-line"><strong>${esc(statusLabel(c.availability))}</strong> - ${esc(c.last_confirmed_at || "")}</div>`
+      : "";
+
+    const more = c.last_confirmed_at
+      ? `<details class="hc-more"><summary>More details</summary>
+           <div class="hc-line">Last confirmed: ${esc(c.last_confirmed_at)}</div>
+         </details>`
+      : "";
+
+    return `<article class="hc-card">
+      <h4 class="hc-name">${i + 1}. ${esc(c.center)}</h4>
+      ${main ? `<div class="hc-main">${esc(mapText("main"))}</div>` : ""}
+      <div class="hc-meta">
+        ${distance ? `<span class="hc-dist">${distance}</span>` : ""}
+        ${statusBadge}
+      </div>
+      <div class="hc-line hc-addr">${esc(c.address || "")}</div>
+      ${hours}
+      ${phoneLine}
+      ${stock}
+      <div class="hc-actions">${dirBtn}${callBtn}</div>
+      ${more}
+    </article>`;
   }).join("");
 
   const note = data.excluded_stale
     ? `<div class="notice aging">${esc(String(data.excluded_stale))} ${t("excluded")}</div>`
     : "";
 
-  return `${title}${list}${note}`;
+  return `${title}<div class="hc-list">${cards}</div>${note}`;
 }
-
 function formatList(data) {
   const groups = (data.groups || [])
     .filter(g => g.items && g.items.length)
@@ -1025,3 +1064,106 @@ if (signOutBtn) {
   });
 })();
 // ---------- end tap fix ----------
+
+// ---------- Tan-aw: Medicine chip lists available medicines ----------
+// Tapping a medicine asks about it, so out-of-stock items show the referral card.
+
+function availCls(label) {
+  if (label === "Available") return "ok";
+  if (label === "Low Stock") return "low";
+  if (label === "Out of Stock") return "out";
+  return "none";
+}
+
+// Replace the reply formatter: the new list is one reply type, everything else uses the original
+const _tanawOriginalFormatReply = formatReply;
+formatReply = function (data) {
+  if (data && data.result === "available_list") {
+    const isCeb = currentLang === "ceb";
+    if (!data.items.length) {
+      return `<strong>${esc(data.center)}</strong><br>${esc(isCeb
+        ? "Wala pay tambal nga naa sa stock karon."
+        : "No medicines are in stock right now.")}`;
+    }
+    const head = isCeb ? "Mga tambal nga naa karon sa" : "Medicines available now at";
+    const rows = data.items.map(i => `
+      <button type="button" class="avail-item" data-ask="${esc(i.name)}">
+        <span class="avail-name">${esc(i.name)}</span>
+        <span class="pill ${availCls(i.availability)}">${esc(statusLabel(i.availability))}</span>
+      </button>`).join("");
+    const note = isCeb
+      ? "Pindota ang tambal aron makita ang status ug referral kung wala."
+      : "Tap a medicine to check it. If it is out of stock, you will see a referral to another center.";
+    return `<div class="avail-wrap">
+      <div class="avail-head">${esc(head)} <strong>${esc(data.center)}</strong>:</div>
+      <div class="avail-list">${rows}</div>
+      <div class="avail-note">${esc(note)}</div>
+    </div>`;
+  }
+  return _tanawOriginalFormatReply(data);
+};
+
+// Medicine chip: show the list instead of a fixed question
+async function showAvailableMedicines() {
+  if (busy) return;
+  if (typeof hidePanel === "function") hidePanel();
+  if (typeof closeSidebar === "function") closeSidebar();
+
+  const label = currentLang === "ceb" ? "Unsa nga tambal ang naa?" : "Which medicines are available?";
+  const userEntry = { who: "user", text: label, time: nowLabel() };
+  messages.push(userEntry);
+  chat.appendChild(userRow(userEntry));
+  chat.classList.add("has-history");
+  scrollDown();
+
+  busy = true;
+  const row = botRow(TYPING_HTML, nowLabel());
+  chat.appendChild(row);
+  scrollDown();
+  try {
+    const centers = await getCenters();
+    const main = centers.find(c => c.id === 1) || centers[0];
+    const items = await getItems(1);
+    const available = items.filter(i => i.status_key === "in_stock" || i.status_key === "low_stock");
+    const entry = {
+      who: "bot",
+      data: {
+        result: "available_list",
+        center: main ? main.name : "",
+        items: available.map(i => ({
+          name: i.name,
+          availability: i.availability,
+          status_key: i.status_key,
+          last_confirmed_at: i.last_confirmed_at,
+        })),
+      },
+      time: nowLabel(),
+    };
+    messages.push(entry);
+    saveMessages();
+    row.remove();
+    renderEntry(entry);
+    scrollDown();
+  } catch (err) {
+    row.querySelector(".bubble").textContent = t("serverError");
+  } finally {
+    busy = false;
+  }
+}
+
+// Capture phase: runs before the chip's own handler, so the old fixed question is not sent
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest('[data-action="medicine"]');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  showAvailableMedicines();
+}, true);
+
+// Tapping a medicine in the list asks about it
+chat.addEventListener("click", function (e) {
+  const b = e.target.closest("[data-ask]");
+  if (!b) return;
+  send(b.dataset.ask);
+});
+// ---------- end medicine list ----------

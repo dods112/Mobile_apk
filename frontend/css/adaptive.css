@@ -183,3 +183,86 @@ body.page-body .sidebar {
     min-height: 340px !important;
   }
 }
+
+/* Tan-aw: compact health center cards */
+.hc-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; width: 100%; }
+.hc-card {
+  background: #FFFFFF;
+  border: 1px solid #DDEBE8;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.hc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.hc-name { font-size: 0.95rem; font-weight: 700; color: #0D6E63; line-height: 1.3; margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.hc-main { font-size: 0.78rem; font-weight: 500; color: #647A78; }
+.hc-dist { flex-shrink: 0; font-size: 0.78rem; font-weight: 600; color: #0D6E63; white-space: nowrap; }
+.hc-badges:empty { display: none; }
+.hc-open, .hc-closed { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+.hc-open { background: #DCFCE7; color: #166534; }
+.hc-closed { background: #FEE2E2; color: #991B1B; }
+.hc-line { font-size: 0.84rem; color: #183B3A; line-height: 1.45; overflow-wrap: anywhere; }
+.hc-addr { color: #647A78; }
+.hc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.hc-btn {
+  flex: 1 1 130px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.2;
+}
+.hc-btn-solid { background: #0D6E63; color: #FFFFFF; border: 1px solid #0D6E63; }
+.hc-btn-outline { background: #FFFFFF; color: #0D6E63; border: 1px solid #0D6E63; }
+.hc-more { border-top: 1px solid #EEF6F3; padding-top: 6px; }
+.hc-more summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; font-size: 0.84rem; font-weight: 600; color: #0D6E63; list-style: none; }
+.hc-more summary::-webkit-details-marker { display: none; }
+.hc-more[open] summary { margin-bottom: 4px; }
+
+/* Tan-aw: card header v2 */
+.hc-name { font-size: 0.95rem; font-weight: 700; color: #0D6E63; line-height: 1.3; margin: 0; overflow-wrap: anywhere; }
+.hc-main { font-size: 0.74rem; font-weight: 600; color: #647A78; margin-top: 2px; }
+.hc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.hc-dist { font-size: 0.8rem; font-weight: 700; color: #0D6E63; white-space: nowrap; }
+.hc-phone { font-size: 0.86rem; color: #183B3A; font-weight: 600; overflow-wrap: anywhere; }
+.hc-phone a { color: #0D6E63; text-decoration: none; }
+.hc-phone a:hover { text-decoration: underline; }
+
+/* Tan-aw: medicine list styles */
+.avail-wrap { display: flex; flex-direction: column; gap: 10px; }
+.avail-head { font-size: 0.92rem; color: #183B3A; line-height: 1.4; }
+.avail-list { display: flex; flex-direction: column; gap: 8px; }
+.avail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  background: #F3FBF8;
+  border: 1px solid #DDEBE8;
+  border-radius: 12px;
+  color: #183B3A;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.avail-item:hover, .avail-item:active { border-color: #0D6E63; background: #E6F6F1; }
+.avail-name { font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; min-width: 0; }
+.avail-item .pill { flex-shrink: 0; }
+.avail-note { font-size: 0.78rem; color: #647A78; line-height: 1.4; }
+.pill { font-size: 0.72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: #DCFCE7; color: #166534; }
+.pill.low { background: #FFEDD5; color: #9A3412; }
+.pill.out { background: #FEE2E2; color: #991B1B; }
+.pill.none { background: #F1F5F9; color: #475569; }
