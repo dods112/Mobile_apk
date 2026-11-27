@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D6E63">
+  <title>Staff Dashboard - Tan-aw AI</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/staff.css">
+</head>
+<body class="staff-body">
+  <header class="staff-header">
+    <div class="staff-brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+          <path d="M9 11l2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Tan-aw AI</h1>
+        <p>Staff dashboard</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="staff-user" id="staff-user"></span>
+    </div>
+  </header>
+
+  <nav class="staff-tabs" aria-label="Staff sections">
+    <button type="button" class="staff-tab active" data-tab="meds">Medicines</button>
+    <button type="button" class="staff-tab" data-tab="reports">Reports <span class="count" id="report-count"></span></button>
+  </nav>
+
+  <main class="staff-main">
+    <section id="tab-meds">
+      <div id="warning"></div>
+      <div id="attention"></div>
+      <div id="items"></div>
+    </section>
+    <section id="tab-reports" hidden>
+      <div id="reports"></div>
+    </section>
+  </main>
+
+  <script src="js/api.js?v=106"></script>
+  <script src="js/auth.js?v=106" data-guard="staff"></script>
+  <script src="js/staff.js?v=106"></script>
+  <script src="js/reports.js?v=106"></script>
+  <script>
+    document.querySelectorAll(".staff-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".staff-tab").forEach(b => b.classList.toggle("active", b === btn));
+        document.getElementById("tab-meds").hidden = btn.dataset.tab !== "meds";
+        document.getElementById("tab-reports").hidden = btn.dataset.tab !== "reports";
+        if (btn.dataset.tab === "reports" && window.loadReports) window.loadReports();
+      });
+    });
+  </script>
+</body>
+</html>
