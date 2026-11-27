@@ -1,4 +1,5 @@
 import os
+import libsql_client
 import sqlite3
 from pathlib import Path
 
