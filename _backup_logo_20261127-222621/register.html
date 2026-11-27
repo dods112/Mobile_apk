@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D6E63">
+  <title>Register - Tan-aw AI</title>
+  <link rel="stylesheet" href="css/auth.css?v=115">
+  <link rel="stylesheet" href="css/adaptive.css?v=117">
+</head>
+<body>
+  <main class="auth-card">
+    <div class="auth-logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+        <path d="M9 11l2 2 4-4"/>
+      </svg>
+    </div>
+    <h1>Create account</h1>
+    <p class="auth-tag">Check before you go</p>
+    <p class="auth-welcome">Register to check medicine and health centers near you.</p>
+
+    <form id="register-form" class="auth-form" novalidate>
+      <div class="field">
+        <label for="fullname">Full name <span class="opt">(optional)</span></label>
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          </span>
+          <input id="fullname" name="fullname" placeholder="Your name" autocomplete="name">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </span>
+          <input id="username" name="username" placeholder="Choose a username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </div>
+        <span class="hint">3 to 30 letters, numbers, dots, dashes, or underscores.</span>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <input id="password" class="has-toggle" name="password" type="password" placeholder="At least 6 characters" autocomplete="new-password" required>
+          <button type="button" class="toggle-pw" data-toggle="password" aria-label="Show password">Show</button>
+        </div>
+        <span class="hint" id="pw-hint">At least 6 characters.</span>
+      </div>
+
+      <div class="field">
+        <label for="confirm">Confirm password</label>
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/></svg>
+          </span>
+          <input id="confirm" class="has-toggle" name="confirm" type="password" placeholder="Type it again" autocomplete="new-password" required>
+          <button type="button" class="toggle-pw" data-toggle="confirm" aria-label="Show password">Show</button>
+        </div>
+      </div>
+
+      <div class="auth-error" id="error" role="alert"></div>
+      <button id="submit" class="auth-btn" type="submit">Register</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+
+    <div class="trust">
+      <div>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/></svg>
+        Check stock
+      </div>
+      <div>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Find centers
+      </div>
+      <div>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Save time
+      </div>
+    </div>
+    <p class="auth-foot">Staff accounts are created by the health center administrator.</p>
+  </main>
+
+  <script src="js/api.js?v=115"></script>
+  <script src="js/auth.js?v=115"></script>
+  <script>
+    const form = document.getElementById("register-form");
+    const errorEl = document.getElementById("error");
+    const submitBtn = document.getElementById("submit");
+    const pwHint = document.getElementById("pw-hint");
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.add("show");
+    }
+
+    document.querySelectorAll("[data-toggle]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const input = document.getElementById(btn.dataset.toggle);
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.textContent = show ? "Hide" : "Show";
+        btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      });
+    });
+
+    document.getElementById("password").addEventListener("input", e => {
+      const ok = e.target.value.length >= 6;
+      pwHint.textContent = ok ? "Good length." : "At least 6 characters.";
+      pwHint.classList.toggle("ok", ok);
+    });
+
+    checkSession().then(user => {
+      if (user) location.replace(homePageFor(user.role));
+    });
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      errorEl.classList.remove("show");
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+
+      if (!username) return showError("Enter a username.");
+      if (password.length < 6) return showError("Password must be at least 6 characters.");
+      if (password !== confirm) return showError("The two passwords do not match.");
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span>Creating account...';
+      try {
+        const data = await registerRequest(
+          username,
+          password,
+          document.getElementById("fullname").value.trim(),
+          ""
+        );
+        saveAuth(data);
+        location.replace(homePageFor(data.role));
+      } catch (err) {
+        showError(err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Register";
+      }
+    });
+  </script>
+</body>
+</html>
