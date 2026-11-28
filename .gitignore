@@ -9,3 +9,7 @@
 backend/tanaw.db
 **/local.properties
 *.apk
+
+# Local backups
+_backup_*
+**/_backup_*

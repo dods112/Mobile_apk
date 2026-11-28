@@ -1316,3 +1316,32 @@ formatReply = function (data) {
   }
 })();
 // Tan-aw: end follow-up context v2
+
+// Tan-aw: stock details v1. Shows the medicine description and a short guidance line.
+(function () {
+  var _fmtStock = formatReply;
+  formatReply = function (data) {
+    var html = _fmtStock(data);
+    if (!data || !data.item || !data.availability) return html;
+    var desc = data.description ? '<div class="stock-desc">' + esc(data.description) + "</div>" : "";
+    var guide = (data.guidance && !data.referral)
+      ? '<div class="stock-guide">' + esc(data.guidance) + "</div>"
+      : "";
+    return '<div class="stock-wrap">' + desc + html + guide + "</div>";
+  };
+})();
+// Tan-aw: end stock details v1
+
+// Tan-aw: info reply. Shows what a product is for, without stock.
+(function () {
+  var _fmtInfo = formatReply;
+  formatReply = function (data) {
+    if (data && data.result === "info") {
+      return '<div class="info-wrap"><div class="info-name">' + esc(data.item) + '</div>' +
+        '<div class="info-desc">' + esc(data.description) + '</div>' +
+        '<div class="info-note">' + esc(data.note) + '</div></div>';
+    }
+    return _fmtInfo(data);
+  };
+})();
+// Tan-aw: end info reply

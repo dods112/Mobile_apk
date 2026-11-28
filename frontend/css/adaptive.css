@@ -518,3 +518,14 @@ body.page-body[data-active="medicines"] { background: #E7F7F3; }
   text-decoration: none;
 }
 .svc-call:active { background: #0B9485; }
+
+/* Tan-aw: stock detail styles */
+.stock-wrap { display: flex; flex-direction: column; gap: 8px; }
+.stock-desc { font-size: 0.84rem; color: #647A78; line-height: 1.45; }
+.stock-guide { font-size: 0.84rem; color: #08796D; font-weight: 600; line-height: 1.45; }
+
+/* Tan-aw: info styles */
+.info-wrap { display: flex; flex-direction: column; gap: 6px; }
+.info-name { font-size: 0.98rem; font-weight: 700; color: #08796D; }
+.info-desc { font-size: 0.92rem; color: #253442; line-height: 1.5; }
+.info-note { font-size: 0.8rem; color: #778394; }

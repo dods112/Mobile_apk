@@ -1,4 +1,4 @@
-﻿import os
+import os
 import hashlib
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -10,7 +10,10 @@ from pydantic import BaseModel
 from database import get_connection
 from freshness import freshness_state
 from intent import detect_intent, CLARIFY
+from answers import bank_detect
+from lang import detect as detect_lang
 from context import ensure_context_table, user_key, load_context, save_context
+from llm_guard import check as scope_check
 from schedule import open_now, list_services
 from nearby import find_nearby, TANDAG_CENTER
 from referral import build_referral
@@ -211,6 +214,12 @@ def root():
     return {"status": "Tan-aw AI is running"}
 
 
+def _item_description(item_id):
+    c = get_connection()
+    r = c.execute("SELECT description FROM items WHERE id = ?", (item_id,)).fetchone()
+    c.close()
+    return r["description"] if r else None
+
 @app.get("/api/stock")
 def check_stock(
     item: str = Query(..., min_length=2),
@@ -255,6 +264,7 @@ def check_stock(
     result = {
         "item": row["name"],
         "availability": STATUS_LABELS[status["status"]],
+        "description": _item_description(row["id"]),
         "status_changed_at": to_ph_time(status["status_changed_at"]),
         "last_confirmed_at": to_ph_time(status["last_confirmed_at"]),
         "freshness": f["state"],
@@ -292,6 +302,23 @@ PRICE_TEXT = {
 
 
 def _route_chat(intent, cid, item, clarify_key, lang, ulat, ulng):
+    if intent == "medicine_info":
+        if not item:
+            return {"result": "text", "message": tx(lang, "unknown")}
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT description, description_en FROM items WHERE name = ? AND is_active = 1 LIMIT 1",
+            (item,),
+        ).fetchone()
+        conn.close()
+        desc = (row["description_en"] or row["description"]) if (row and lang == "en") else (row["description"] if row else None)
+        if desc is None:
+            desc = "Walay nalista nga detalye." if lang == "ceb" else "No description is listed for this product yet."
+        if lang == "ceb":
+            note = "Para sa stock, pangutana: naa ba ang " + item + "?"
+        else:
+            note = "To check stock, ask: is " + item + " available?"
+        return {"result": "info", "item": item, "description": desc, "note": note}
     if intent == "greeting":
         return {"result": "text", "message": tx(lang, "greeting")}
     if intent == "acknowledge":
@@ -323,6 +350,27 @@ def _route_chat(intent, cid, item, clarify_key, lang, ulat, ulng):
     return {"result": "unknown", "message": tx(lang, "unknown")}
 
 
+def _with_description(reply, center_id):
+    if not isinstance(reply, dict) or not reply.get("item"):
+        return _with_description(reply, cid)
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT description, category FROM items WHERE health_center_id = ? AND name = ? AND is_active = 1 LIMIT 1",
+        (center_id, reply["item"]),
+    ).fetchone()
+    conn.close()
+    if row and row["description"]:
+        reply["description"] = row["description"]
+    status = reply.get("availability")
+    if status == "Out of Stock":
+        reply["guidance"] = "Tawag una sa imong health center bago moadto, o tan-awa ang referral sa ubos." if False else "Call your health center before you go. A referral is shown below."
+    elif status == "Low Stock":
+        reply["guidance"] = "Limited pa ang stock. Tawag una sa center." if False else "Stock is limited. Call the center first."
+    elif status == "Available":
+        reply["guidance"] = "Naa sa stock base sa latest nga record." if False else "Listed as available in the latest record."
+    return reply
+
+
 @app.get("/api/chat")
 def chat(
     message: str = Query(..., min_length=2),
@@ -332,13 +380,19 @@ def chat(
     lng: Optional[float] = Query(None),
     x_auth_token: Optional[str] = Header(None),
 ):
-    lang = normalize_lang(lang)
+    lang = normalize_lang(detect_lang(message, lang))
+    refusal = scope_check(message, lang)
+    if refusal and refusal.startswith("__identity__"):
+        return {"result": "text", "message": refusal[len("__identity__"):]}
+    if refusal:
+        return {"result": "text", "message": refusal}
+
     user_lat = lat if lat is not None else TANDAG_CENTER[0]
     user_lng = lng if lng is not None else TANDAG_CENTER[1]
 
     key = user_key(x_auth_token)
     ctx = load_context(key)
-    d = detect_intent(message, center, ctx)
+    d = bank_detect(message, center, ctx) or detect_intent(message, center, ctx)
     intent = d["intent"]
     cid = d["center"]
     item = d["item"]
@@ -607,3 +661,41 @@ def needs_attention(center: int = Query(...)):
             })
 
     return {"count": len(flagged), "items": flagged}
+
+
+# Tan-aw: full list with status and description (overrides the earlier list reply)
+def _items_reply(center_id: int, lang: str) -> dict:
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT i.name, i.category, i.description, s.status
+           FROM items i
+           LEFT JOIN stock_status s ON s.id = (
+               SELECT id FROM stock_status WHERE item_id = i.id
+               ORDER BY status_changed_at DESC, id DESC LIMIT 1)
+           WHERE i.health_center_id = ? AND i.is_active = 1
+           ORDER BY i.category, i.name""",
+        (center_id,),
+    ).fetchall()
+    conn.close()
+    if not rows:
+        return {"result": "text", "message": tx(lang, "items_none")}
+
+    def line(r):
+        status = STATUS_LABELS.get(r["status"], "No record")
+        desc = r["description"] or ""
+        return f"{r['name']} - {status}" + (f". {desc}" if desc else "")
+
+    meds = [line(r) for r in rows if r["category"] != "vaccine"]
+    vacc = [line(r) for r in rows if r["category"] == "vaccine"]
+    if lang == "ceb":
+        labels = ("Mga tambal", "Mga bakuna", "Kini ang status sa center:")
+    else:
+        labels = ("Medicines", "Vaccines", "Here is the status at this center:")
+    return {
+        "result": "list",
+        "intro": labels[2],
+        "groups": [
+            {"label": labels[0], "items": meds},
+            {"label": labels[1], "items": vacc},
+        ],
+    }
