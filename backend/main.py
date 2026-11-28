@@ -100,6 +100,8 @@ seed_admin()
 app.include_router(auth_router)
 app.include_router(admin_router)
 ensure_history_tables()
+from database import ensure_english_column
+ensure_english_column()
 app.include_router(history_router)
 app.include_router(staff_router)
 ensure_context_table()

@@ -257,3 +257,37 @@ def init_db():
 if __name__ == "__main__":
     init_db()
     print("Database created at:", DB_PATH)
+
+
+EN_DESCRIPTIONS = {
+    "Amoxicillin 250mg": "Antibiotic for bacterial infections.",
+    "Paracetamol": "For fever and body pain.",
+    "ORS": "Oral Rehydration Salts. For dehydration or diarrhea.",
+    "Ibuprofen": "For pain and inflammation.",
+    "Cetirizine": "For allergy, itching, and runny nose.",
+    "Salbutamol": "For asthma and difficulty breathing.",
+    "Lagundi": "Herbal medicine for cough.",
+    "Metformin": "For diabetes (blood sugar).",
+    "Losartan": "For high blood pressure (hypertension).",
+    "Ferrous Sulfate": "Iron supplement for anemia.",
+    "Vitamin C": "Vitamin C to support the immune system.",
+    "Bioflu": "For colds, cough, and fever (colds and flu).",
+    "BCG Vaccine": "Vaccine that protects against tuberculosis (TB).",
+    "Tetanus Toxoid": "Vaccine against tetanus.",
+    "Hepatitis B Vaccine": "Vaccine against hepatitis B.",
+}
+
+
+def ensure_english_column():
+    # Adds description_en on any database that lacks it (local SQLite or Turso), then fills it
+    conn = get_connection()
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    if "description_en" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN description_en TEXT")
+    for name, text in EN_DESCRIPTIONS.items():
+        conn.execute(
+            "UPDATE items SET description_en = ? WHERE name = ? AND (description_en IS NULL OR description_en = '')",
+            (text, name),
+        )
+    conn.commit()
+    conn.close()
