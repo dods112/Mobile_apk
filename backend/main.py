@@ -38,7 +38,7 @@ STATUS_LABELS = {
 
 TEXT = {
     "en": {
-        "greeting": "Good day! Welcome to Tan-aw AI.",
+        "greeting": "Good day! Welcome to Capsule AI.",
         "thanks": "You're welcome! Take care.",
         "medical": "Sorry, I cannot give medical advice. Please ask a doctor.",
         "services_none": "No services are listed yet.",
@@ -50,7 +50,7 @@ TEXT = {
         "no_record": "No reliable record for this item at this health center. This does not mean it is out of stock.",
     },
     "ceb": {
-        "greeting": "Maayong adlaw! Welcome sa Tan-aw AI.",
+        "greeting": "Maayong adlaw! Welcome sa Capsule AI.",
         "thanks": "Walay sapayan! Amping kanunay.",
         "medical": "Pasensya, dili ko makahatag og medikal nga tambag. Palihug konsulta sa doktor.",
         "services_none": "Wala pay natala nga serbisyo.",
@@ -85,7 +85,7 @@ def verify_staff_pin(x_staff_pin: str = Header(None), x_auth_token: str = Header
     check_staff_access(x_auth_token, x_staff_pin)
 
 
-app = FastAPI(title="Tan-aw AI")
+app = FastAPI(title="Capsule AI")
 
 app.add_middleware(
     CORSMiddleware,
@@ -211,7 +211,7 @@ def _services_text(center_id: int, lang: str) -> str:
 
 @app.get("/")
 def root():
-    return {"status": "Tan-aw AI is running"}
+    return {"status": "Capsule AI is running"}
 
 
 def _item_description(item_id):

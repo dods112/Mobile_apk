@@ -1,4 +1,4 @@
-// Tan-aw AI: "Checked at" note on the dedicated pages
+// Capsule AI: "Checked at" note on the dedicated pages
 (function () {
   function stamp() {
     var now = new Date();

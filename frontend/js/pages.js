@@ -1,4 +1,4 @@
-// Tan-aw AI: shared helpers for the dedicated pages
+// Capsule AI: shared helpers for the dedicated pages
 
 function esc(text) {
   const div = document.createElement("div");
@@ -85,7 +85,7 @@ const NAV_ITEMS = [
   { key: "medicines", href: "medicines.html", label: "Medicine Directory", icon: '<path d="M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7z"/><path d="M8 8l8 8"/>' },
   { key: "centers", href: "centers.html", label: "Health Centers", icon: '<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/>' },
   { key: "saved", href: "saved.html", label: "Saved Centers", icon: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>' },
-  { key: "about", href: "about.html", label: "About Tan-aw AI", icon: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>' },
+  { key: "about", href: "about.html", label: "About Capsule AI", icon: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>' },
 ];
 
 function buildSidebar() {
@@ -99,9 +99,9 @@ function buildSidebar() {
     </a>`).join("");
   aside.innerHTML = `
     <div class="brand-sidebar">
-      <div class="logo-large"><img src="img/logo.png" alt="Tan-aw AI" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;display:block"></div>
+      <div class="logo-large"><img src="img/logo.png" alt="Capsule AI" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;display:block"></div>
       <div class="brand-text">
-        <h1>Tan-aw AI</h1>
+        <h1>Capsule AI</h1>
         <p>Check before you go</p>
       </div>
     </div>

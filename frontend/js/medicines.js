@@ -1,4 +1,4 @@
-// Tan-aw AI: Medicine Directory. Uses the same API data. No quantities are invented.
+// Capsule AI: Medicine Directory. Uses the same API data. No quantities are invented.
 (function () {
   var listEl = document.getElementById("list");
   var qEl = document.getElementById("q");

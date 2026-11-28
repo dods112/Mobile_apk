@@ -1,4 +1,4 @@
-// Tan-aw AI - auth helpers (login, register, session guard)
+// Capsule AI - auth helpers (login, register, session guard)
 // Keeps the same public function names as before, so login.html, register.html,
 // staff.html and the other pages keep working without changes.
 

@@ -1,4 +1,4 @@
-// Tan-aw AI: chat history (saves each conversation to the server, per signed-in user)
+// Capsule AI: chat history (saves each conversation to the server, per signed-in user)
 (function () {
   if (!document.getElementById("chat") || typeof window.send !== "function") return;
 

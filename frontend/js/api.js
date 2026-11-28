@@ -1,4 +1,4 @@
-// Tan-aw AI - API helpers
+// Capsule AI - API helpers
 
 const PROD_API = "https://tan-aw-api-joig.onrender.com";
 const LOCAL_API = "http://127.0.0.1:8000";

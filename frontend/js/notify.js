@@ -1,4 +1,4 @@
-// Tan-aw AI: in-app restock notifications (v2)
+// Capsule AI: in-app restock notifications (v2)
 (function () {
   "use strict";
 

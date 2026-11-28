@@ -1,4 +1,4 @@
-// Tan-aw AI: admin page. Create staff accounts, set their center, reset passwords, remove accounts.
+// Capsule AI: admin page. Create staff accounts, set their center, reset passwords, remove accounts.
 (function () {
   var msgEl = document.getElementById("admin-msg");
   var listEl = document.getElementById("staff-list");

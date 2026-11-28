@@ -20,8 +20,8 @@ IDENTITY = re.compile(
     re.IGNORECASE,
 )
 IDENTITY_REPLY = {
-    "en": "I am Tan-aw AI, a health-center information assistant for Tandag City. I can tell you if a medicine or vaccine is available at a health center, when a center is open, its services, and nearby referrals. Ask me something like \"is amoxicillin available?\"",
-    "ceb": "Ako si Tan-aw AI, usa ka assistant nga nagtambag bahin sa health center sa Tandag City. Mahimo ko nga isulti kung naa ang tambal o bakuna sa center, kung bukas ang center, serbisyo niini, ug referral sa duol nga center. Pangutana ko, pananglitan: \"naa ba ang amoxicillin?\"",
+    "en": "I am Capsule AI, a health-center information assistant for Tandag City. I can tell you if a medicine or vaccine is available at a health center, when a center is open, its services, and nearby referrals. Ask me something like \"is amoxicillin available?\"",
+    "ceb": "Ako si Capsule AI, usa ka assistant nga nagtambag bahin sa health center sa Tandag City. Mahimo ko nga isulti kung naa ang tambal o bakuna sa center, kung bukas ang center, serbisyo niini, ug referral sa duol nga center. Pangutana ko, pananglitan: \"naa ba ang amoxicillin?\"",
 }
 REFUSE_OFFTOPIC = {
     "en": "I can only help with medicine and vaccine availability, health center hours, services, and referrals in Tandag City. Do you want to check one of those?",

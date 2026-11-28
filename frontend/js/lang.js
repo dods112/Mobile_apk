@@ -8,9 +8,9 @@ const STRINGS = {
     clear: "Clear chat",
     tagline: "Check before you go",
     placeholder: "Ask about medicine, vaccines, or services...",
-    info: "Tan-aw AI shows information from health centers. It is not medical advice. Ask the health center about any health problem.",
+    info: "Capsule AI shows information from health centers. It is not medical advice. Ask the health center about any health problem.",
     welcomeTitle: "Good day!",
-    welcomeText: "Hi! I am Tan-aw AI. I help you check medicine and services at your health center before you go.",
+    welcomeText: "Hi! I am Capsule AI. I help you check medicine and services at your health center before you go.",
     suggestions: [
       "Is amoxicillin available?",
       "Is paracetamol in stock?",
@@ -53,9 +53,9 @@ const STRINGS = {
     clear: "Limpyohi ang chat",
     tagline: "Tan-awa una bago ka mangadto",
     placeholder: "Pangutana bahin sa tambal, bakuna, o serbisyo...",
-    info: "Ang Tan-aw AI nagpakita ra sa impormasyon gikan sa health center. Dili kini medikal nga tambag. Pangutana sa health center para sa bisan unsang problema sa imong panglawas.",
+    info: "Ang Capsule AI nagpakita ra sa impormasyon gikan sa health center. Dili kini medikal nga tambag. Pangutana sa health center para sa bisan unsang problema sa imong panglawas.",
     welcomeTitle: "Maayong adlaw!",
-    welcomeText: "Kumusta! Ako si Tan-aw AI. Tabangan ta ka pangitaon ang tambal ug serbisyo sa imong health center una ka mangadto.",
+    welcomeText: "Kumusta! Ako si Capsule AI. Tabangan ta ka pangitaon ang tambal ug serbisyo sa imong health center una ka mangadto.",
     suggestions: [
       "Naa pa bay amoxicillin?",
       "Naa pa bay paracetamol?",
